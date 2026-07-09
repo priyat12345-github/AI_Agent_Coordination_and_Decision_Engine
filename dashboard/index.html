@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Agent Engine — Testing Dashboard</title>
+  <meta name="description" content="Interactive testing dashboard for the AI Agent Coordination & Decision Engine — Milestone 1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <h1 class="logo-title">AI Agent Engine</h1>
+          <p class="logo-sub">Milestone 1 — Agent Foundation</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-green" id="health-badge">● Connecting…</span>
+        <span class="badge badge-blue" id="session-badge">Session: —</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main Layout ────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Left Panel: Input + Controls -->
+    <aside class="panel panel-left">
+      <section class="card">
+        <h2 class="card-title">
+          <span class="icon">🧠</span> New Query
+        </h2>
+
+        <div class="field">
+          <label for="query-input" class="field-label">User Request</label>
+          <textarea
+            id="query-input"
+            class="textarea"
+            rows="5"
+            placeholder="e.g. Analyse our Q2 sales performance and recommend actions…"
+          ></textarea>
+        </div>
+
+        <div class="field">
+          <label class="field-label checkbox-label">
+            <input type="checkbox" id="reset-memory" />
+            <span>Reset memory for this query</span>
+          </label>
+        </div>
+
+        <button id="run-btn" class="btn btn-primary" onclick="runQuery()">
+          <span class="btn-icon">▶</span> Run Agents
+        </button>
+
+        <div id="loading" class="loading hidden">
+          <div class="spinner"></div>
+          <span id="loading-label">Planner thinking…</span>
+        </div>
+      </section>
+
+      <!-- Quick Examples -->
+      <section class="card">
+        <h2 class="card-title"><span class="icon">💡</span> Quick Examples</h2>
+        <div class="examples">
+          <button class="example-btn" onclick="setQuery('Analyse Q2 sales performance and suggest growth strategies.')">📊 Sales Analysis</button>
+          <button class="example-btn" onclick="setQuery('Identify risks in our current supply chain and recommend mitigations.')">⚠️ Risk Assessment</button>
+          <button class="example-btn" onclick="setQuery('Generate a competitive landscape report for the CRM software market.')">🔍 Market Research</button>
+          <button class="example-btn" onclick="setQuery('Create an onboarding plan for a new software engineer joining the team.')">👤 HR Planning</button>
+        </div>
+      </section>
+
+      <!-- Agents Legend -->
+      <section class="card">
+        <h2 class="card-title"><span class="icon">🤖</span> Agents</h2>
+        <div class="agents-list">
+          <div class="agent-item">
+            <span class="agent-dot dot-planner"></span>
+            <div>
+              <p class="agent-name">Planner</p>
+              <p class="agent-desc">Decomposes requests into tasks</p>
+            </div>
+          </div>
+          <div class="agent-item">
+            <span class="agent-dot dot-analyst"></span>
+            <div>
+              <p class="agent-name">Analyst</p>
+              <p class="agent-desc">Analyses information & produces findings</p>
+            </div>
+          </div>
+          <div class="agent-item">
+            <span class="agent-dot dot-executor"></span>
+            <div>
+              <p class="agent-name">Executor</p>
+              <p class="agent-desc">Carries out specific tasks</p>
+            </div>
+          </div>
+          <div class="agent-item">
+            <span class="agent-dot dot-responder"></span>
+            <div>
+              <p class="agent-name">Responder</p>
+              <p class="agent-desc">Synthesises the final reply</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Right Panel: Results -->
+    <div class="panel panel-right">
+
+      <!-- Execution Plan -->
+      <section class="card" id="plan-card" style="display:none;">
+        <h2 class="card-title"><span class="icon">📋</span> Execution Plan</h2>
+        <p id="plan-goal" class="plan-goal"></p>
+        <div id="plan-tasks" class="task-list"></div>
+      </section>
+
+      <!-- Agent Results -->
+      <section class="card" id="results-card" style="display:none;">
+        <h2 class="card-title"><span class="icon">⚙️</span> Agent Outputs</h2>
+        <div id="task-results" class="results-list"></div>
+      </section>
+
+      <!-- Final Response -->
+      <section class="card response-card" id="response-card" style="display:none;">
+        <div class="response-header">
+          <h2 class="card-title"><span class="icon">✅</span> Final Response</h2>
+          <button class="btn btn-sm" onclick="copyResponse()">📋 Copy</button>
+        </div>
+        <div id="final-response" class="response-body"></div>
+      </section>
+
+      <!-- Error Card -->
+      <section class="card error-card" id="error-card" style="display:none;">
+        <h2 class="card-title"><span class="icon">❌</span> Error</h2>
+        <pre id="error-body" class="error-body"></pre>
+      </section>
+
+      <!-- History -->
+      <section class="card" id="history-card">
+        <div class="response-header">
+          <h2 class="card-title"><span class="icon">🕑</span> Message History</h2>
+          <button class="btn btn-sm btn-danger" onclick="clearHistory()">🗑 Clear</button>
+        </div>
+        <div id="history-list" class="history-list">
+          <p class="empty-msg">No messages yet. Run a query to get started.</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
