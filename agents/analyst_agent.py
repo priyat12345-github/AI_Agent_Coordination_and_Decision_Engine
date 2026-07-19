@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from agents.base_agent import BaseAgent
 from prompts import ANALYST_SYSTEM_PROMPT, ANALYST_HUMAN_TEMPLATE
+from tools import search_knowledge_base
 
 
 class AnalystAgent(BaseAgent):
@@ -15,7 +16,8 @@ class AnalystAgent(BaseAgent):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(name="AnalystAgent", **kwargs)
+        tools = [search_knowledge_base]
+        super().__init__(name="AnalystAgent", tools=tools, **kwargs)
 
     @property
     def system_prompt(self) -> str:

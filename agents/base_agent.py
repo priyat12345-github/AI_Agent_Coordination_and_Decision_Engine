@@ -5,10 +5,10 @@ Base Agent — abstract foundation for all specialised agents.
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langchain_core.language_models.chat_models import BaseChatModel
 
 load_dotenv()
@@ -63,9 +63,10 @@ class BaseAgent(ABC):
         - run(task, context, **kwargs)
     """
 
-    def __init__(self, name: str, llm: Optional[BaseChatModel] = None):
+    def __init__(self, name: str, llm: Optional[BaseChatModel] = None, tools: Optional[List[Callable]] = None):
         self.name = name
         self.llm: BaseChatModel = llm or build_llm()
+        self.tools = tools or []
 
     @property
     @abstractmethod
@@ -86,8 +87,58 @@ class BaseAgent(ABC):
             SystemMessage(content=self.system_prompt),
             HumanMessage(content=human_message),
         ]
+        
+        if self.tools:
+            return self._call_llm_with_tools(messages)
+            
         response = self.llm.invoke(messages)
         return response.content
+
+    def _call_llm_with_tools(self, messages: List[Any]) -> str:
+        """
+        Handles the tool-calling loop:
+        1. Invokes the LLM bound with tools.
+        2. Executes requested tools and feeds results back.
+        3. Repeats until a final text response is produced.
+        """
+        llm_with_tools = self.llm.bind_tools(self.tools)
+        
+        # Tool dictionary for quick execution lookup
+        tool_map = {tool.name: tool for tool in self.tools}
+        
+        max_iterations = 5
+        for _ in range(max_iterations):
+            response = llm_with_tools.invoke(messages)
+            messages.append(response)
+            
+            # If there are no tool calls, the LLM gave a final answer
+            if not response.tool_calls:
+                return response.content
+                
+            # Execute each requested tool
+            for tool_call in response.tool_calls:
+                tool_name = tool_call["name"]
+                tool_args = tool_call["args"]
+                tool_call_id = tool_call["id"]
+                
+                try:
+                    print(f"    [Tool] {tool_name}({tool_args})")
+                    tool_instance = tool_map.get(tool_name)
+                    if not tool_instance:
+                        raise ValueError(f"Tool {tool_name} not found")
+                        
+                    tool_output = tool_instance.invoke(tool_args)
+                    
+                except Exception as e:
+                    tool_output = f"Error executing {tool_name}: {str(e)}"
+                    print(f"    [Tool Error] {tool_output}")
+                    
+                messages.append(ToolMessage(
+                    content=str(tool_output),
+                    tool_call_id=tool_call_id
+                ))
+        
+        return "Error: Exceeded maximum tool call iterations."
 
     def _parse_json(self, raw: str) -> Dict[str, Any]:
         """
