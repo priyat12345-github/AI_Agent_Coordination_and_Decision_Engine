@@ -1,75 +1,104 @@
 """
-Mock Enterprise Tools using LangChain's @tool decorator.
-These simulate connections to internal ERPs, databases, and APIs.
+Enterprise Tools for Customer Support & Resolution Engine.
+Connects directly to the live enterprise.db SQLite database.
 """
 
 import json
+import sqlite3
+import os
 from langchain_core.tools import tool
 
+DB_PATH = "enterprise.db"
+
+def get_db_connection():
+    if not os.path.exists(DB_PATH):
+        raise FileNotFoundError(f"Database {DB_PATH} not found. Please run setup_db.py first.")
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 
 @tool
-def fetch_sales_data(quarter: str) -> str:
+def fetch_customer_data(customer_id: str) -> str:
     """
-    Simulates fetching financial sales records from an ERP system for a given quarter.
+    Fetches a live customer profile from the enterprise SQLite database.
     
     Args:
-        quarter (str): The quarter to fetch data for (e.g., 'Q1', 'Q2', 'Q3', 'Q4').
+        customer_id (str): The ID of the customer (e.g., '104', 'C-992').
         
     Returns:
-        JSON string containing sales data and revenue.
+        JSON string containing customer details, purchase history, and warranty status.
     """
-    mock_db = {
-        "Q1": {"revenue": 1500000, "units_sold": 5000, "top_region": "North America"},
-        "Q2": {"revenue": 1725000, "units_sold": 5800, "top_region": "Europe"},
-        "Q3": {"revenue": 1600000, "units_sold": 5200, "top_region": "Asia"},
-        "Q4": {"revenue": 2100000, "units_sold": 7100, "top_region": "North America"},
-    }
+    clean_id = ''.join(filter(str.isdigit, customer_id))
     
-    data = mock_db.get(quarter.upper())
-    if not data:
-        return json.dumps({"error": f"No data found for quarter: {quarter}"})
-    
-    return json.dumps({"quarter": quarter.upper(), "data": data})
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM customers WHERE id = ?", (clean_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return json.dumps({"error": f"Customer ID {customer_id} not found in database."})
+            
+        data = dict(row)
+        return json.dumps({"customer_id": customer_id, "data": data})
+    except Exception as e:
+        return json.dumps({"error": f"Database error: {str(e)}"})
 
 
 @tool
-def search_knowledge_base(query: str) -> str:
+def search_policy_wiki(query: str) -> str:
     """
-    Simulates querying an internal wiki or document store for company policies, 
-    historical data, or structural information.
+    Queries the live enterprise database for return policies, 
+    troubleshooting steps, or legal guidelines.
     
     Args:
         query (str): The search query to look up.
         
     Returns:
-        String containing the search results.
+        String containing the policy or guidelines.
     """
     query = query.lower()
-    if "q3 projection" in query or "projection" in query:
-        return "Internal Wiki: Q3 projections indicate a slight dip in consumer spending, expecting $1.6M revenue. Focus marketing on Asia region."
-    elif "marketing" in query or "strategy" in query:
-        return "Internal Wiki: The current strategy relies heavily on digital ad spend in emerging markets. Expected ROI is 12%."
-    elif "supply chain" in query or "risk" in query:
-        return "Internal Wiki: Supply chain risks currently involve semiconductor shortages affecting Q4 deliverables. Mitigation plan: onboard secondary suppliers."
+    search_keywords = ["refund", "return", "warranty", "troubleshoot", "screen", "broken"]
     
-    return f"No specific internal documents found for query: '{query}'."
+    found_keyword = None
+    for kw in search_keywords:
+        if kw in query:
+            found_keyword = kw
+            break
+            
+    if not found_keyword:
+        return f"No specific policy documents found for query: '{query}'."
+        
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT policy_text FROM policies WHERE keyword LIKE ?", (f"%{found_keyword}%",))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return row["policy_text"]
+        return f"No policy text found matching '{found_keyword}'."
+    except Exception as e:
+        return f"Database error: {str(e)}"
 
 
 @tool
-def calculate_growth_metrics(current: float, previous: float) -> str:
+def process_refund(customer_id: str, amount: float) -> str:
     """
-    Calculates percentage growth between two numbers.
-    Useful for precise mathematical operations that LLMs might struggle with.
+    Simulates an action tool that connects to the billing API to issue a refund.
     
     Args:
-        current (float): The current period's value.
-        previous (float): The previous period's value.
+        customer_id (str): The customer receiving the refund.
+        amount (float): The dollar amount to refund.
         
     Returns:
-        String detailing the percentage growth.
+        String confirming the billing action.
     """
-    if previous == 0:
-        return "Error: Previous value cannot be zero."
-    
-    growth = ((current - previous) / previous) * 100
-    return f"{growth:.2f}%"
+    if amount <= 0:
+        return "Error: Refund amount must be greater than zero."
+        
+    # In a real system, this would UPDATE the database to log the refund
+    return f"SUCCESS: Refund of ${amount:.2f} has been processed and credited to customer {customer_id}'s original payment method. Transaction ID: REF-{customer_id}-8992"

@@ -1,4 +1,41 @@
-.env
-venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+venv/
+env/
+.venv/
+
+# Database (optional - comment out if you want to include sample DB)
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (if any frontend build)
+node_modules/
+
+# Docker volumes
+data/chroma/

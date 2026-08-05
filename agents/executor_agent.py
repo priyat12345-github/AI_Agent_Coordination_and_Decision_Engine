@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 from agents.base_agent import BaseAgent
 from prompts import EXECUTOR_SYSTEM_PROMPT, EXECUTOR_HUMAN_TEMPLATE
-from tools import fetch_sales_data, search_knowledge_base, calculate_growth_metrics
+from tools import fetch_customer_data, search_policy_wiki, process_refund
 
 
 class ExecutorAgent(BaseAgent):
@@ -17,7 +17,7 @@ class ExecutorAgent(BaseAgent):
     """
 
     def __init__(self, **kwargs):
-        tools = [fetch_sales_data, search_knowledge_base, calculate_growth_metrics]
+        tools = [fetch_customer_data, search_policy_wiki, process_refund]
         super().__init__(name="ExecutorAgent", tools=tools, **kwargs)
 
     @property

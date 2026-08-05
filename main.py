@@ -11,6 +11,10 @@ import json
 import sys
 from pathlib import Path
 
+# Ensure stdout uses UTF-8 to prevent UnicodeEncodeError with rich and special characters
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 # Ensure project root is in path
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -27,10 +31,10 @@ from workflows.agent_workflow import AgentWorkflow
 console = Console()
 
 BANNER = """
-╔══════════════════════════════════════════════════════════════╗
-║      AI Agent Coordination & Decision Engine                 ║
-║      Milestone 1 — Agent Foundation                          ║
-╚══════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════╗
+║      Enterprise Customer Support & Resolution Engine             ║
+║      Powered by Multi-Agent Coordination                         ║
+╚══════════════════════════════════════════════════════════════════╝
 """
 
 

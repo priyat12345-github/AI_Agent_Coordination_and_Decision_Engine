@@ -108,7 +108,24 @@ class BaseAgent(ABC):
         
         max_iterations = 5
         for _ in range(max_iterations):
-            response = llm_with_tools.invoke(messages)
+            try:
+                response = llm_with_tools.invoke(messages)
+            except Exception as e:
+                # Handle Groq's 'tool_use_failed' error where it returns a failed_generation string
+                error_str = str(e)
+                if 'failed_generation' in error_str:
+                    try:
+                        # Extract the failed generation text which usually contains the JSON
+                        failed_gen = error_str.split("'failed_generation': '")[1].split("'}}")[0]
+                        failed_gen = failed_gen.replace("\\n", "\n").replace('\\"', '"')
+                        # Remove any trailing <function=...> tag
+                        if "<function=" in failed_gen:
+                            failed_gen = failed_gen.split("<function=")[0]
+                        return failed_gen.strip()
+                    except:
+                        pass
+                raise e
+
             messages.append(response)
             
             # If there are no tool calls, the LLM gave a final answer

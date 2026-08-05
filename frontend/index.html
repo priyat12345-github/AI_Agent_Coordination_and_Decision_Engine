@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Coordination Engine</title>
+    <meta name="description" content="Enterprise AI Agent Coordination & Decision Engine — Multi-agent workflow automation platform">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #0a0f1e; font-family: 'Inter', sans-serif; color: #f1f5f9; }
+        .glass { background: rgba(15,23,42,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 0.875rem; }
+        .glow-indigo { box-shadow: 0 0 24px rgba(99,102,241,0.15); }
+        .terminal-scroll::-webkit-scrollbar { width: 6px; }
+        .terminal-scroll::-webkit-scrollbar-track { background: transparent; }
+        .terminal-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+        @keyframes slideIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+        .slide-in { animation: slideIn 0.25s ease forwards; }
+        .agent-running { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); }
+        .agent-done    { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); }
+        .gradient-header { background: linear-gradient(135deg, #1e1b4b 0%, #0a0f1e 60%); }
+    </style>
+</head>
+<body class="h-screen w-full overflow-hidden flex flex-col">
+
+    <!-- Header -->
+    <header class="gradient-header h-16 border-b border-slate-800 flex items-center justify-between px-8 shrink-0">
+        <div class="flex items-center gap-4">
+            <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-lg font-bold">⚙</div>
+            <div>
+                <h1 class="font-bold text-base tracking-tight">AI Agent Coordination Engine</h1>
+                <p class="text-xs text-slate-500">Enterprise Multi-Agent Decision Platform</p>
+            </div>
+            <span class="ml-3 px-2.5 py-0.5 text-xs font-medium bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot"></span> System Online
+            </span>
+        </div>
+        <div class="flex items-center gap-6 text-xs text-slate-400">
+            <span id="connection-status" class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 pulse-dot"></span> Connecting...
+            </span>
+            <span id="workflow-counter" class="text-slate-500">0 workflows run</span>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1 flex overflow-hidden p-5 gap-5">
+
+        <!-- Left Panel -->
+        <div class="w-80 flex flex-col gap-4 shrink-0">
+
+            <!-- Launch Card -->
+            <div class="glass glow-indigo p-5 flex flex-col gap-4">
+                <h2 class="font-semibold flex items-center gap-2 text-sm text-slate-300 uppercase tracking-wider">
+                    ▶ Launch Workflow
+                </h2>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Workflow Type</label>
+                        <select id="workflow-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="custom">🤖 Custom Query (AI Decides)</option>
+                            <option value="customer_escalation">🚨 Customer Escalation</option>
+                            <option value="market_analysis">📈 Market Analysis</option>
+                            <option value="vendor_evaluation">🏭 Vendor Evaluation</option>
+                            <option value="financial_review">💰 Financial Review</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Your Request</label>
+                        <textarea id="workflow-input" rows="4"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-600 resize-none"
+                            placeholder="e.g. Is there any warranty on product 205?"></textarea>
+                    </div>
+
+                    <button id="btn-launch"
+                        class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm">
+                        ⚡ Execute Workflow
+                    </button>
+                </div>
+            </div>
+
+            <!-- Agent Status Card -->
+            <div class="glass p-5 flex-1 flex flex-col min-h-0">
+                <h2 class="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-3">Agent Status</h2>
+                <div class="space-y-2 overflow-y-auto terminal-scroll flex-1" id="agent-status-list">
+                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-planner">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">🗺️</span>
+                            <div><p class="text-sm font-medium">Planner Agent</p><p class="text-xs text-slate-500">Task Decomposition</p></div>
+                        </div>
+                        <span id="status-planner" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
+                    </div>
+                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-research">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">🔍</span>
+                            <div><p class="text-sm font-medium">Research Agent</p><p class="text-xs text-slate-500">DB & Info Retrieval</p></div>
+                        </div>
+                        <span id="status-research" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
+                    </div>
+                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-analysis">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">📊</span>
+                            <div><p class="text-sm font-medium">Analysis Agent</p><p class="text-xs text-slate-500">Data Processing</p></div>
+                        </div>
+                        <span id="status-analysis" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
+                    </div>
+                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-decision">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">⚖️</span>
+                            <div><p class="text-sm font-medium">Decision Agent</p><p class="text-xs text-slate-500">Recommendation</p></div>
+                        </div>
+                        <span id="status-decision" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
+                    </div>
+                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-executor">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">⚡</span>
+                            <div><p class="text-sm font-medium">Executor Agent</p><p class="text-xs text-slate-500">Action & Output</p></div>
+                        </div>
+                        <span id="status-executor" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="flex-1 flex flex-col gap-4 min-w-0">
+
+            <!-- Live Event Log -->
+            <div class="glass flex-1 p-5 flex flex-col min-h-0">
+                <div class="flex items-center justify-between mb-3 shrink-0">
+                    <h2 class="font-semibold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        📡 Live Execution Feed
+                        <span id="live-badge" class="hidden px-1.5 py-0.5 rounded text-xs bg-indigo-500/20 text-indigo-400 pulse-dot">LIVE</span>
+                    </h2>
+                    <button id="btn-clear" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Clear</button>
+                </div>
+                <div id="event-log" class="flex-1 bg-slate-950 rounded-xl border border-slate-800 p-4 font-mono text-xs overflow-y-auto terminal-scroll space-y-2">
+                    <div class="text-slate-600">System ready. Waiting for workflow execution...</div>
+                </div>
+            </div>
+
+            <!-- Final Output -->
+            <div class="glass p-5 h-52 flex flex-col shrink-0">
+                <h2 class="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-3">📋 Final Answer / Deliverables</h2>
+                <div id="deliverables" class="flex-1 bg-slate-950 rounded-xl border border-slate-800 p-4 text-sm overflow-y-auto terminal-scroll text-slate-400 flex items-center justify-center">
+                    No output yet. Execute a workflow to see results here.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let ws;
+        let workflowCount = 0;
+        let currentWorkflowId = null;
+
+        // ─── WebSocket ────────────────────────────────────────────────────────────
+        function connectWS() {
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${proto}//${location.host}/ws/events`);
+
+            ws.onopen = () => {
+                document.getElementById('connection-status').innerHTML =
+                    `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span> Live Connected`;
+                document.getElementById('connection-status').className = 'text-emerald-400 flex items-center gap-1.5 text-xs';
+                document.getElementById('live-badge').classList.remove('hidden');
+            };
+
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                appendLog(data);
+                updateAgentCard(data);
+                // When executor finishes, show final answer
+                if (data.agent_role === 'executor' && data.event_type === 'agent_completed') {
+                    pollFinalResult();
+                }
+            };
+
+            ws.onclose = () => {
+                document.getElementById('connection-status').innerHTML =
+                    `<span class="w-1.5 h-1.5 rounded-full bg-rose-400 inline-block mr-1"></span> Reconnecting...`;
+                document.getElementById('live-badge').classList.add('hidden');
+                setTimeout(connectWS, 2500);
+            };
+        }
+
+        // ─── Log Entry ───────────────────────────────────────────────────────────
+        const eventLog = document.getElementById('event-log');
+        function appendLog(data) {
+            const time = new Date(data.timestamp || Date.now()).toLocaleTimeString();
+            const roleColors = {
+                planner: 'text-indigo-400', research: 'text-cyan-400',
+                analysis: 'text-emerald-400', decision: 'text-amber-400',
+                executor: 'text-rose-400', SYSTEM: 'text-slate-400'
+            };
+            const role = (data.agent_role || 'SYSTEM').toLowerCase();
+            let msgColor = roleColors[role] || 'text-slate-300';
+            if (data.event_type && data.event_type.includes('error')) msgColor = 'text-rose-400';
+            if (data.event_type && data.event_type.includes('tool')) msgColor = 'text-yellow-300';
+
+            const el = document.createElement('div');
+            el.className = 'slide-in';
+            el.innerHTML = `<span class="text-slate-600">[${time}]</span> <span class="font-bold ${roleColors[role] || 'text-slate-400'}">[${(data.agent_role||'SYS').toUpperCase()}]</span> <span class="${msgColor}">${data.message}</span>`;
+            eventLog.appendChild(el);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        // ─── Agent Cards ─────────────────────────────────────────────────────────
+        function updateAgentCard(data) {
+            const role = (data.agent_role || '').toLowerCase();
+            const badge = document.getElementById(`status-${role}`);
+            const card  = document.getElementById(`card-${role}`);
+            if (!badge || !card) return;
+
+            if (data.event_type && data.event_type.includes('started')) {
+                badge.textContent = 'Running';
+                badge.className = 'text-xs px-2 py-1 rounded-md bg-indigo-500/30 text-indigo-300 pulse-dot';
+                card.classList.add('agent-running'); card.classList.remove('agent-done');
+            } else if (data.event_type && data.event_type.includes('completed')) {
+                badge.textContent = '✓ Done';
+                badge.className = 'text-xs px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-400';
+                card.classList.add('agent-done'); card.classList.remove('agent-running');
+                setTimeout(() => {
+                    badge.textContent = 'Idle';
+                    badge.className = 'text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400';
+                    card.classList.remove('agent-done');
+                }, 5000);
+            }
+        }
+
+        // ─── Poll for final result ────────────────────────────────────────────────
+        async function pollFinalResult() {
+            if (!currentWorkflowId) return false;
+            try {
+                const res = await fetch(`/api/v1/workflows/${currentWorkflowId}`);
+                if (res.ok) {
+                    const wf = await res.json();
+                    const ctx = wf.context || {};
+                    const status = wf.status;
+
+                    // Only show execution_output (Executor Agent's final answer)
+                    // Fall back to decision_output if executor didn't run
+                    if (ctx.execution_output) {
+                        showDeliverable(ctx.execution_output);
+                        return true; // done
+                    }
+                    // If workflow is completed but no execution_output, show best available
+                    if (status === 'completed') {
+                        const fallback = ctx.decision_output || ctx.analysis_output || ctx.research_output || ctx.plan_output;
+                        if (fallback) showDeliverable(fallback);
+                        return true; // done
+                    }
+                }
+            } catch (e) { console.warn('Poll error', e); }
+            return false; // not done yet
+        }
+
+        function showDeliverable(text) {
+            const box = document.getElementById('deliverables');
+            box.className = 'flex-1 bg-slate-950 rounded-xl border border-emerald-800/50 p-4 text-sm overflow-y-auto terminal-scroll text-slate-200 whitespace-pre-wrap';
+            box.textContent = text;
+        }
+
+        // ─── Launch Button ────────────────────────────────────────────────────────
+        document.getElementById('btn-launch').onclick = async () => {
+            const type  = document.getElementById('workflow-type').value;
+            const input = document.getElementById('workflow-input').value.trim();
+            if (!input) { alert('Please enter a request.'); return; }
+
+            // Reset UI
+            eventLog.innerHTML = '';
+            document.getElementById('deliverables').textContent = 'Agents are working... please wait.';
+            document.getElementById('deliverables').className = 'flex-1 bg-slate-950 rounded-xl border border-slate-800 p-4 text-sm overflow-y-auto terminal-scroll text-slate-500 flex items-center justify-center';
+            appendLog({ agent_role: 'SYSTEM', event_type: 'workflow_started', message: `Launching "${type}" workflow...`, timestamp: new Date().toISOString() });
+
+            try {
+                const res = await fetch('/api/v1/workflows/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ request: input, workflow_type: type })
+                });
+                const data = await res.json();
+                currentWorkflowId = data.workflow_id;
+                workflowCount++;
+                document.getElementById('workflow-counter').textContent = `${workflowCount} workflow${workflowCount > 1 ? 's' : ''} run`;
+                appendLog({ agent_role: 'SYSTEM', event_type: 'workflow_started', message: `Workflow ${data.workflow_id} started. Agents collaborating...`, timestamp: new Date().toISOString() });
+
+                // Poll every 2s for up to 60s, stop only when execution_output is ready
+                let polls = 0;
+                const pollTimer = setInterval(async () => {
+                    polls++;
+                    const done = await pollFinalResult();
+                    if (done || polls > 30) {
+                        clearInterval(pollTimer);
+                        if (polls > 30) {
+                            appendLog({ agent_role: 'SYSTEM', event_type: 'timeout', message: 'Workflow timed out waiting for result.', timestamp: new Date().toISOString() });
+                        }
+                    }
+                }, 2000);
+
+            } catch (err) {
+                appendLog({ agent_role: 'SYSTEM', event_type: 'error', message: `Error: ${err.message}`, timestamp: new Date().toISOString() });
+            }
+        };
+
+        document.getElementById('btn-clear').onclick = () => { eventLog.innerHTML = ''; };
+
+        // Start WS immediately
+        connectWS();
+    </script>
+</body>
+</html>

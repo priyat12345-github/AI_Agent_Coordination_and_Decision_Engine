@@ -4,6 +4,7 @@ Coordinates the Planner → Analyst/Executor → Responder pipeline.
 """
 
 import json
+import time
 from typing import Any, Dict, List
 
 from agents import AnalystAgent, ExecutorAgent, PlannerAgent, ResponderAgent
@@ -59,6 +60,7 @@ class AgentWorkflow:
             context = self.memory.snapshot()["store"]
 
             print(f"\n[{agent_role}] Running task {task_id}: {description}")
+            time.sleep(5)  # Avoid Groq free-tier rate limit (12k TPM)
 
             if agent_role == "ANALYST":
                 result = self.analyst.run(
@@ -88,6 +90,7 @@ class AgentWorkflow:
             self.memory.add_message("assistant", json.dumps(result), agent=result.get("agent"))
 
         # ── Step 3: Respond ───────────────────────────────────────────────
+        time.sleep(5)  # Extra pause before final Responder call
         print(f"\n[ResponderAgent] Composing final response …")
         context = self.memory.snapshot()["store"]
         final = self.responder.run(

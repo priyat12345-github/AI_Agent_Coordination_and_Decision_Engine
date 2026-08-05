@@ -1,0 +1,22 @@
+# Docker Compose for AI Agent Coordination Engine
+
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: agent_engine_api
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - LLM_PROVIDER=mock
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
