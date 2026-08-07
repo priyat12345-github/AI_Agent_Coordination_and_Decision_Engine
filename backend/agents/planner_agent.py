@@ -69,20 +69,19 @@ class PlannerAgent(BaseAgent):
                     if task_num > 8:
                         break
 
+        # Always include executor so final answer is delivered to user
+        if AgentRole.EXECUTOR.value not in agents_mentioned:
+            agents_mentioned.append(AgentRole.EXECUTOR.value)
+
         return {
-            "agents_required": agents_mentioned or [
-                AgentRole.RESEARCH.value,
-                AgentRole.ANALYSIS.value,
-                AgentRole.DECISION.value,
-                AgentRole.EXECUTOR.value,
-            ],
+            "agents_required": agents_mentioned,
             "sub_tasks": sub_tasks[:6] if sub_tasks else [
                 {"id": "TASK-001", "description": "Gather relevant information", "status": "pending"},
                 {"id": "TASK-002", "description": "Analyze collected data", "status": "pending"},
                 {"id": "TASK-003", "description": "Generate recommendations", "status": "pending"},
                 {"id": "TASK-004", "description": "Execute and deliver final output", "status": "pending"},
             ],
-            "estimated_steps": len(agents_mentioned) + 1 or 5,
+            "estimated_steps": len(agents_mentioned) or 5,
             "priority": "HIGH",
             "complexity": "MEDIUM" if len(request) < 200 else "HIGH",
         }

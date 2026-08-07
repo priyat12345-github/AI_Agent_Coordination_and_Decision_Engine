@@ -112,7 +112,7 @@ def _get_db_connection():
 
 
 def _initialize_db():
-    """Create and seed enterprise database tables."""
+    """Create and seed comprehensive enterprise database tables."""
     conn = _get_db_connection()
     cursor = conn.cursor()
 
@@ -125,7 +125,8 @@ def _initialize_db():
         CREATE TABLE IF NOT EXISTS customers (
             id TEXT PRIMARY KEY, name TEXT, tier TEXT, mrr INTEGER,
             status TEXT, sentiment TEXT, account_manager TEXT,
-            last_contact TEXT, open_tickets INTEGER, nps_score INTEGER
+            last_contact TEXT, open_tickets INTEGER, nps_score INTEGER,
+            recent_purchase TEXT, purchase_date TEXT, warranty_status TEXT, account_standing TEXT
         );
         CREATE TABLE IF NOT EXISTS workflow_results (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,6 +146,14 @@ def _initialize_db():
             id TEXT PRIMARY KEY, name TEXT, category TEXT, 
             price INTEGER, warranty_details TEXT, status TEXT
         );
+        CREATE TABLE IF NOT EXISTS policies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            keyword TEXT, policy_text TEXT
+        );
+        CREATE TABLE IF NOT EXISTS support_tickets (
+            ticket_id TEXT PRIMARY KEY, customer_id TEXT, customer_name TEXT,
+            issue TEXT, priority TEXT, status TEXT, assigned_agent TEXT
+        );
     """)
 
     # Seed vendor data
@@ -155,81 +164,133 @@ def _initialize_db():
             ("V002", "DataStream Analytics", "Data & Analytics", 78500000, 320, 7.9, "MEDIUM", "james.hall@datastream.io", "UK", 2015),
             ("V003", "CloudPeak Systems", "Cloud Infrastructure", 234000000, 1200, 9.1, "LOW", "priya.sharma@cloudpeak.com", "India", 2008),
             ("V004", "AI Dynamics Corp", "Artificial Intelligence", 56000000, 180, 8.3, "MEDIUM", "alex.rivera@aidynamics.ai", "Canada", 2018),
+            ("V005", "CyberShield Security", "Cybersecurity", 95000000, 450, 9.4, "LOW", "vikram.patel@cybershield.com", "USA", 2012),
         ]
         cursor.executemany("INSERT OR IGNORE INTO vendors VALUES (?,?,?,?,?,?,?,?,?,?)", vendors)
 
+    cursor.execute("SELECT COUNT(*) FROM customers")
+    if cursor.fetchone()[0] == 0:
         customers = [
-            ("C001", "Global Finance Corp", "Enterprise", 45000, "Active", "Positive", "Rachel Torres", "2024-11-15", 2, 72),
-            ("C002", "RetailMax Group", "Premium", 18500, "At Risk", "Neutral", "Marcus Lee", "2024-10-28", 7, 34),
-            ("C003", "HealthBridge Network", "Enterprise", 67200, "Active", "Positive", "Elena Vasquez", "2024-11-20", 0, 91),
-            ("C004", "LogiChain Dynamics", "Standard", 8900, "Churning", "Negative", "David Kim", "2024-10-05", 12, 18),
+            ("C001", "Global Finance Corp", "Enterprise", 45000, "Active", "Positive", "Rachel Torres", "2024-11-15", 2, 72, "Server Cluster X", "2024-01-15", "Active - Premium", "Good"),
+            ("C002", "RetailMax Group", "Premium", 18500, "At Risk", "Neutral", "Marcus Lee", "2024-10-28", 7, 34, "POS Terminal v2", "2023-05-10", "Active - Standard", "Review Needed"),
+            ("C003", "HealthBridge Network", "Enterprise", 67200, "Active", "Positive", "Elena Vasquez", "2024-11-20", 0, 91, "Cloud Firewall Server 308", "2024-03-01", "Active - Full Coverage", "Good"),
+            ("C004", "LogiChain Dynamics", "Standard", 8900, "Churning", "Negative", "David Kim", "2024-10-05", 12, 18, "Enterprise Router X-205", "2024-06-12", "Active - 2 Year Enterprise", "Escalated"),
+            ("104", "Alex Johnson", "VIP", 12000, "Active", "Positive", "Sarah Chen", "2026-07-15", 1, 88, "Laptop Pro X", "2026-07-15", "Active - Full Coverage", "Good"),
+            ("205", "Sam Smith", "Standard", 1500, "Inactive", "Neutral", "Marcus Lee", "2025-01-10", 0, 45, "Wireless Mouse", "2025-01-10", "Expired", "Good"),
+            ("306", "Jordan Lee", "VIP", 28000, "Active", "Positive", "Elena Vasquez", "2026-05-20", 0, 95, "Desktop Workstation", "2026-05-20", "Active - Basic", "Good"),
         ]
-        cursor.executemany("INSERT OR IGNORE INTO customers VALUES (?,?,?,?,?,?,?,?,?,?)", customers)
+        cursor.executemany("INSERT OR IGNORE INTO customers VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", customers)
         
     cursor.execute("SELECT COUNT(*) FROM products")
     if cursor.fetchone()[0] == 0:
         products = [
             ("205", "Enterprise Router X-205", "Networking", 1200, "2-year comprehensive enterprise warranty including next-day hardware replacement.", "Active"),
-            ("308", "Cloud Firewall Server", "Security", 4500, "1-year standard warranty.", "Active"),
+            ("308", "Cloud Firewall Server", "Security", 4500, "1-year standard warranty including firmware updates and remote support.", "Active"),
+            ("104", "Laptop Pro X", "Hardware", 2100, "3-year accidental damage protection with onsite repair service.", "Active"),
+            ("501", "UltraVision 4K Monitor", "Peripherals", 650, "1-year limited manufacturer warranty.", "Active"),
+            ("602", "Enterprise Storage Array S-600", "Infrastructure", 15000, "5-year mission-critical 24/7 technical support and hot-swap replacement.", "Active"),
+            ("703", "Secure Gateway X-70", "Networking", 3200, "2-year hardware warranty with lifetime software updates.", "Active"),
         ]
         cursor.executemany("INSERT OR IGNORE INTO products VALUES (?,?,?,?,?,?)", products)
 
+    cursor.execute("SELECT COUNT(*) FROM policies")
+    if cursor.fetchone()[0] == 0:
+        policies = [
+            ("refund, return, warranty", "Internal Policy: VIP & Enterprise customers with 'Active' warranty are eligible for immediate, no-questions-asked hardware replacements or full refunds including shipping. Standard customers with expired warranties receive 15% trade-in credit."),
+            ("troubleshoot, screen, broken, router", "Tech Support Guide: For hardware failures (e.g. Router X-205 or Firewall Server 308), dispatch a replacement unit within 24 hours under active enterprise warranty coverage."),
+            ("escalation, churn, risk", "Customer Escalation SLA: Accounts marked 'At Risk' or 'Churning' with >5 open tickets must be assigned an Executive Account Manager within 2 hours.")
+        ]
+        cursor.executemany("INSERT OR IGNORE INTO policies (keyword, policy_text) VALUES (?, ?)", policies)
+
+    cursor.execute("SELECT COUNT(*) FROM support_tickets")
+    if cursor.fetchone()[0] == 0:
+        tickets = [
+            ("TICK-101", "C004", "LogiChain Dynamics", "Enterprise Router X-205 hardware failure and packet drop", "HIGH", "OPEN", "David Kim"),
+            ("TICK-102", "C002", "RetailMax Group", "POS Terminal v2 billing discount review", "MEDIUM", "OPEN", "Marcus Lee"),
+            ("TICK-103", "C003", "HealthBridge Network", "Annual security audit compliance check", "LOW", "RESOLVED", "Elena Vasquez")
+        ]
+        cursor.executemany("INSERT OR IGNORE INTO support_tickets VALUES (?,?,?,?,?,?,?)", tickets)
+
     conn.commit()
     conn.close()
-    logger.info("Enterprise database initialized")
+    logger.info("Enterprise database initialized with full datasets")
 
 
 async def database_query_impl(query: str, table: str = "auto") -> str:
-    """Query the enterprise database for relevant records."""
+    """Query the enterprise database for relevant records across all tables."""
     _initialize_db()
     conn = _get_db_connection()
     cursor = conn.cursor()
 
     query_lower = query.lower()
-    results = []
+    results = {}
 
     try:
-        # Auto-detect table from query
-        if table == "auto":
-            if any(w in query_lower for w in ["vendor", "supplier", "partner"]):
-                cursor.execute("SELECT * FROM vendors LIMIT 10")
-                rows = cursor.fetchall()
-                results = [dict(row) for row in rows]
-                table = "vendors"
-            elif any(w in query_lower for w in ["customer", "client", "account"]):
-                cursor.execute("SELECT * FROM customers LIMIT 10")
-                rows = cursor.fetchall()
-                results = [dict(row) for row in rows]
-                table = "customers"
-            elif any(w in query_lower for w in ["decision", "workflow"]):
-                cursor.execute("SELECT * FROM decisions ORDER BY timestamp DESC LIMIT 10")
-                rows = cursor.fetchall()
-                results = [dict(row) for row in rows]
-                table = "decisions"
-            elif any(w in query_lower for w in ["product", "warranty", "item", "205"]):
+        # Search all relevant tables dynamically based on query terms
+        words = [w for w in re.findall(r'\w+', query_lower) if len(w) > 1]
+        
+        # 1. Search Products
+        if any(w in query_lower for w in ["product", "item", "warranty", "router", "firewall", "laptop", "monitor", "storage", "gateway", "205", "308", "104", "501", "602", "703"]):
+            matched = []
+            for word in words:
+                cursor.execute("SELECT * FROM products WHERE id LIKE ? OR name LIKE ? OR category LIKE ? OR warranty_details LIKE ?", 
+                               (f"%{word}%", f"%{word}%", f"%{word}%", f"%{word}%"))
+                matched.extend([dict(row) for row in cursor.fetchall()])
+            if not matched:
                 cursor.execute("SELECT * FROM products LIMIT 10")
-                rows = cursor.fetchall()
-                results = [dict(row) for row in rows]
-                table = "products"
-            else:
-                cursor.execute("SELECT * FROM vendors LIMIT 5")
-                rows = cursor.fetchall()
-                results = [dict(row) for row in rows]
-                table = "vendors (default)"
-        else:
-            cursor.execute(f"SELECT * FROM {table} LIMIT 10")
-            rows = cursor.fetchall()
-            results = [dict(row) for row in rows]
+                matched = [dict(row) for row in cursor.fetchall()]
+            # deduplicate
+            unique_prod = {p['id']: p for p in matched}.values()
+            results["products"] = list(unique_prod)
+
+        # 2. Search Customers
+        if any(w in query_lower for w in ["customer", "client", "account", "mrr", "churn", "risk", "vip", "tier", "alex", "johnson", "sam", "smith", "jordan", "lee", "global", "retailmax", "healthbridge", "logichain", "c001", "c002", "c003", "c004"]):
+            matched = []
+            for word in words:
+                cursor.execute("SELECT * FROM customers WHERE id LIKE ? OR name LIKE ? OR tier LIKE ? OR status LIKE ? OR account_manager LIKE ?", 
+                               (f"%{word}%", f"%{word}%", f"%{word}%", f"%{word}%", f"%{word}%"))
+                matched.extend([dict(row) for row in cursor.fetchall()])
+            if not matched:
+                cursor.execute("SELECT * FROM customers LIMIT 10")
+                matched = [dict(row) for row in cursor.fetchall()]
+            unique_cust = {c['id']: c for c in matched}.values()
+            results["customers"] = list(unique_cust)
+
+        # 3. Search Vendors
+        if any(w in query_lower for w in ["vendor", "supplier", "partner", "technova", "datastream", "cloudpeak", "aidynamics", "cybershield", "v001", "v002", "v003", "v004", "v005"]):
+            matched = []
+            for word in words:
+                cursor.execute("SELECT * FROM vendors WHERE id LIKE ? OR name LIKE ? OR industry LIKE ? OR risk_level LIKE ?", 
+                               (f"%{word}%", f"%{word}%", f"%{word}%", f"%{word}%"))
+                matched.extend([dict(row) for row in cursor.fetchall()])
+            if not matched:
+                cursor.execute("SELECT * FROM vendors LIMIT 10")
+                matched = [dict(row) for row in cursor.fetchall()]
+            unique_ven = {v['id']: v for v in matched}.values()
+            results["vendors"] = list(unique_ven)
+
+        # 4. Search Support Tickets & Policies
+        if any(w in query_lower for w in ["ticket", "ticket_id", "escalation", "policy", "refund", "return", "support", "troubleshoot"]):
+            cursor.execute("SELECT * FROM support_tickets LIMIT 5")
+            results["support_tickets"] = [dict(row) for row in cursor.fetchall()]
+            cursor.execute("SELECT * FROM policies LIMIT 5")
+            results["policies"] = [dict(row) for row in cursor.fetchall()]
+
+        # Fallback if no specific table matched
+        if not results:
+            cursor.execute("SELECT * FROM products LIMIT 5")
+            results["products"] = [dict(row) for row in cursor.fetchall()]
+            cursor.execute("SELECT * FROM customers LIMIT 5")
+            results["customers"] = [dict(row) for row in cursor.fetchall()]
 
     except Exception as e:
         logger.error(f"Database query error: {e}")
-        results = []
+        results = {"error": str(e)}
     finally:
         conn.close()
 
-    if results:
-        return f"Database results from '{table}' ({len(results)} records):\n{json.dumps(results, indent=2, default=str)}"
-    return f"No records found in '{table}' for query: {query}"
+    return f"Database query findings for '{query}':\n{json.dumps(results, indent=2, default=str)}"
+
 
 
 registry.register(ToolDefinition(

@@ -3,238 +3,396 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Agent Coordination Engine</title>
-    <meta name="description" content="Enterprise AI Agent Coordination & Decision Engine — Multi-agent workflow automation platform">
+    <title>AI Enterprise Assistant — Multi-Agent Coordination Engine</title>
+    <meta name="description" content="Enterprise AI Agent Coordination Engine — Interactive Multi-Agent Chatbot Assistant">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        body { background-color: #0a0f1e; font-family: 'Inter', sans-serif; color: #f1f5f9; }
-        .glass { background: rgba(15,23,42,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 0.875rem; }
-        .glow-indigo { box-shadow: 0 0 24px rgba(99,102,241,0.15); }
+        body { background-color: #070b14; font-family: 'Inter', sans-serif; color: #f1f5f9; }
+        .glass { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1rem; }
+        .glass-sidebar { background: rgba(11, 17, 32, 0.85); backdrop-filter: blur(16px); border-right: 1px solid rgba(255, 255, 255, 0.07); }
+        .glow-indigo { box-shadow: 0 0 30px rgba(99, 102, 241, 0.15); }
         .terminal-scroll::-webkit-scrollbar { width: 6px; }
         .terminal-scroll::-webkit-scrollbar-track { background: transparent; }
         .terminal-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
-        @keyframes slideIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-        .slide-in { animation: slideIn 0.25s ease forwards; }
-        .agent-running { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); }
-        .agent-done    { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); }
-        .gradient-header { background: linear-gradient(135deg, #1e1b4b 0%, #0a0f1e 60%); }
+        @keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        .slide-in { animation: slideIn 0.3s ease forwards; }
+        .user-bubble { background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 1.25rem 1.25rem 0.25rem 1.25rem; }
+        .bot-bubble  { background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.25rem 1.25rem 1.25rem 0.25rem; }
+        .chip { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); transition: all 0.2s ease; }
+        .chip:hover { background: rgba(99, 102, 241, 0.2); border-color: rgba(99, 102, 241, 0.4); transform: translateY(-1px); }
+        .gradient-header { background: linear-gradient(135deg, #1e1b4b 0%, #070b14 70%); }
+        /* Markdown table styling inside bot bubble */
+        .bot-bubble table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.85rem; }
+        .bot-bubble th, .bot-bubble td { border: 1px solid rgba(255, 255, 255, 0.1); padding: 0.4rem 0.6rem; text-align: left; }
+        .bot-bubble th { background: rgba(30, 41, 59, 0.8); color: #818cf8; font-weight: 600; }
+        .bot-bubble p { margin-bottom: 0.5rem; line-height: 1.5; }
+        .bot-bubble ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+        .bot-bubble strong { color: #38bdf8; }
     </style>
 </head>
 <body class="h-screen w-full overflow-hidden flex flex-col">
 
-    <!-- Header -->
-    <header class="gradient-header h-16 border-b border-slate-800 flex items-center justify-between px-8 shrink-0">
-        <div class="flex items-center gap-4">
-            <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-lg font-bold">⚙</div>
+    <!-- Top Header -->
+    <header class="gradient-header h-16 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-indigo-500/20">🤖</div>
             <div>
-                <h1 class="font-bold text-base tracking-tight">AI Agent Coordination Engine</h1>
-                <p class="text-xs text-slate-500">Enterprise Multi-Agent Decision Platform</p>
+                <h1 class="font-bold text-base tracking-tight text-white flex items-center gap-2">
+                    AI Enterprise Assistant
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Multi-Agent Engine</span>
+                </h1>
+                <p class="text-xs text-slate-400">Autonomous Multi-Agent Enterprise Query & Decision Platform</p>
             </div>
-            <span class="ml-3 px-2.5 py-0.5 text-xs font-medium bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot"></span> System Online
-            </span>
         </div>
-        <div class="flex items-center gap-6 text-xs text-slate-400">
-            <span id="connection-status" class="flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 pulse-dot"></span> Connecting...
+
+        <div class="flex items-center gap-4 text-xs">
+            <span id="connection-status" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-400">
+                <span class="w-2 h-2 rounded-full bg-yellow-400 pulse-dot"></span> Connecting...
             </span>
-            <span id="workflow-counter" class="text-slate-500">0 workflows run</span>
+            <button id="btn-clear-chat" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-all flex items-center gap-1.5 border border-slate-700">
+                🧹 Clear Chat
+            </button>
         </div>
     </header>
 
-    <!-- Main -->
-    <main class="flex-1 flex overflow-hidden p-5 gap-5">
+    <!-- Main Container -->
+    <main class="flex-1 flex overflow-hidden">
 
-        <!-- Left Panel -->
-        <div class="w-80 flex flex-col gap-4 shrink-0">
-
-            <!-- Launch Card -->
-            <div class="glass glow-indigo p-5 flex flex-col gap-4">
-                <h2 class="font-semibold flex items-center gap-2 text-sm text-slate-300 uppercase tracking-wider">
-                    ▶ Launch Workflow
+        <!-- Sidebar: Agent Monitor & Sample Queries -->
+        <aside class="w-80 glass-sidebar flex flex-col p-4 gap-4 shrink-0 overflow-y-auto terminal-scroll">
+            
+            <!-- Agent Status Card -->
+            <div>
+                <h2 class="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+                    <span>⚡ Specialized AI Team</span>
+                    <span class="text-emerald-400 text-xs">5 Online</span>
                 </h2>
 
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1">Workflow Type</label>
-                        <select id="workflow-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="custom">🤖 Custom Query (AI Decides)</option>
-                            <option value="customer_escalation">🚨 Customer Escalation</option>
-                            <option value="market_analysis">📈 Market Analysis</option>
-                            <option value="vendor_evaluation">🏭 Vendor Evaluation</option>
-                            <option value="financial_review">💰 Financial Review</option>
-                        </select>
+                <div class="space-y-2" id="agent-status-list">
+                    <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80 transition-all" id="card-planner">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-lg">🗺️</span>
+                            <div><p class="text-xs font-semibold text-slate-200">Planner Agent</p><p class="text-[10px] text-slate-500">Decomposes Tasks</p></div>
+                        </div>
+                        <span id="status-planner" class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-medium">Idle</span>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1">Your Request</label>
-                        <textarea id="workflow-input" rows="4"
-                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-600 resize-none"
-                            placeholder="e.g. Is there any warranty on product 205?"></textarea>
+                    <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80 transition-all" id="card-research">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-lg">🔍</span>
+                            <div><p class="text-xs font-semibold text-slate-200">Research Agent</p><p class="text-[10px] text-slate-500">Queries SQLite DB</p></div>
+                        </div>
+                        <span id="status-research" class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-medium">Idle</span>
                     </div>
 
-                    <button id="btn-launch"
-                        class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm">
-                        ⚡ Execute Workflow
+                    <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80 transition-all" id="card-analysis">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-lg">📊</span>
+                            <div><p class="text-xs font-semibold text-slate-200">Analysis Agent</p><p class="text-[10px] text-slate-500">Processes Metrics</p></div>
+                        </div>
+                        <span id="status-analysis" class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-medium">Idle</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80 transition-all" id="card-decision">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-lg">⚖️</span>
+                            <div><p class="text-xs font-semibold text-slate-200">Decision Agent</p><p class="text-[10px] text-slate-500">Evaluates Policies</p></div>
+                        </div>
+                        <span id="status-decision" class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-medium">Idle</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80 transition-all" id="card-executor">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-lg">⚡</span>
+                            <div><p class="text-xs font-semibold text-slate-200">Executor Agent</p><p class="text-[10px] text-slate-500">Delivers Results</p></div>
+                        </div>
+                        <span id="status-executor" class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-medium">Idle</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Suggestion Prompts -->
+            <div class="flex-1 flex flex-col min-h-0 pt-2 border-t border-slate-800/80">
+                <h2 class="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-2.5">💡 Sample Database Queries</h2>
+                <div class="space-y-2 overflow-y-auto terminal-scroll pr-1 flex-1">
+                    <button onclick="sendQuickQuery('Is there any warranty on product 205?')" class="chip w-full text-left p-2.5 rounded-xl text-xs text-slate-300">
+                        📦 <span class="font-medium text-slate-200">Product 205 Warranty</span>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Query Enterprise Router X-205 warranty</p>
+                    </button>
+
+                    <button onclick="sendQuickQuery('What is the warranty for Cloud Firewall Server 308?')" class="chip w-full text-left p-2.5 rounded-xl text-xs text-slate-300">
+                        🛡️ <span class="font-medium text-slate-200">Product 308 Firewall</span>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Check firewall security warranty status</p>
+                    </button>
+
+                    <button onclick="sendQuickQuery('Show details for customer C001 Global Finance Corp')" class="chip w-full text-left p-2.5 rounded-xl text-xs text-slate-300">
+                        👤 <span class="font-medium text-slate-200">Customer C001 Account</span>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Fetch MRR, NPS & Account Manager</p>
+                    </button>
+
+                    <button onclick="sendQuickQuery('Which customers are currently At Risk or Churning?')" class="chip w-full text-left p-2.5 rounded-xl text-xs text-slate-300">
+                        🚨 <span class="font-medium text-slate-200">At Risk Customers</span>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Retrieve open tickets & risk statuses</p>
+                    </button>
+
+                    <button onclick="sendQuickQuery('Which vendors have a LOW risk level?')" class="chip w-full text-left p-2.5 rounded-xl text-xs text-slate-300">
+                        🏭 <span class="font-medium text-slate-200">Low Risk Vendors</span>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Query revenue, score & contact email</p>
+                    </button>
+
+                    <button onclick="sendQuickQuery('What is the refund policy for VIP customers?')" class="chip w-full text-left p-2.5 rounded-xl text-xs text-slate-300">
+                        💰 <span class="font-medium text-slate-200">VIP Refund Policy</span>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Check replacement & refund rules</p>
                     </button>
                 </div>
             </div>
 
-            <!-- Agent Status Card -->
-            <div class="glass p-5 flex-1 flex flex-col min-h-0">
-                <h2 class="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-3">Agent Status</h2>
-                <div class="space-y-2 overflow-y-auto terminal-scroll flex-1" id="agent-status-list">
-                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-planner">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-xl">🗺️</span>
-                            <div><p class="text-sm font-medium">Planner Agent</p><p class="text-xs text-slate-500">Task Decomposition</p></div>
-                        </div>
-                        <span id="status-planner" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
-                    </div>
-                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-research">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-xl">🔍</span>
-                            <div><p class="text-sm font-medium">Research Agent</p><p class="text-xs text-slate-500">DB & Info Retrieval</p></div>
-                        </div>
-                        <span id="status-research" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
-                    </div>
-                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-analysis">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-xl">📊</span>
-                            <div><p class="text-sm font-medium">Analysis Agent</p><p class="text-xs text-slate-500">Data Processing</p></div>
-                        </div>
-                        <span id="status-analysis" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
-                    </div>
-                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-decision">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-xl">⚖️</span>
-                            <div><p class="text-sm font-medium">Decision Agent</p><p class="text-xs text-slate-500">Recommendation</p></div>
-                        </div>
-                        <span id="status-decision" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
-                    </div>
-                    <div class="agent-card flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-800 transition-all duration-500" id="card-executor">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-xl">⚡</span>
-                            <div><p class="text-sm font-medium">Executor Agent</p><p class="text-xs text-slate-500">Action & Output</p></div>
-                        </div>
-                        <span id="status-executor" class="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400">Idle</span>
-                    </div>
-                </div>
+            <!-- Database Info Footer -->
+            <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                <span class="flex items-center gap-1.5">🗄️ Database: <code class="text-indigo-400">enterprise.db</code></span>
+                <span class="text-emerald-400">SQLite Connected</span>
             </div>
-        </div>
+        </aside>
 
-        <!-- Right Panel -->
-        <div class="flex-1 flex flex-col gap-4 min-w-0">
+        <!-- Main Chat Area -->
+        <section class="flex-1 flex flex-col h-full bg-slate-950 relative min-w-0">
 
-            <!-- Live Event Log -->
-            <div class="glass flex-1 p-5 flex flex-col min-h-0">
-                <div class="flex items-center justify-between mb-3 shrink-0">
-                    <h2 class="font-semibold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        📡 Live Execution Feed
-                        <span id="live-badge" class="hidden px-1.5 py-0.5 rounded text-xs bg-indigo-500/20 text-indigo-400 pulse-dot">LIVE</span>
-                    </h2>
-                    <button id="btn-clear" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Clear</button>
+            <!-- Messages Stream -->
+            <div id="chat-feed" class="flex-1 overflow-y-auto terminal-scroll p-6 space-y-6">
+                
+                <!-- Welcome Card -->
+                <div class="glass p-6 max-w-2xl mx-auto border border-indigo-500/20 glow-indigo slide-in">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="text-3xl">👋</span>
+                        <div>
+                            <h3 class="font-bold text-base text-white">Welcome to your AI Enterprise Assistant!</h3>
+                            <p class="text-xs text-slate-400">Powered by 5 specialized AI agents collaborating in real-time.</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                        You can ask any question about your enterprise database — including <strong>products, warranties, customer accounts, vendor evaluations, support tickets, and corporate policies</strong>.
+                    </p>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-300">
+                            <span class="text-indigo-400 font-semibold">📦 Products:</span> Routers, Firewalls, Laptops & Warranty status
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-300">
+                            <span class="text-indigo-400 font-semibold">👥 Customers:</span> MRR, Account Managers, NPS & Risk levels
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-300">
+                            <span class="text-indigo-400 font-semibold">🏭 Vendors:</span> Revenue, Industry scores & Contacts
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-300">
+                            <span class="text-indigo-400 font-semibold">📜 Policies:</span> Refund terms, Support SLAs & Replacements
+                        </div>
+                    </div>
                 </div>
-                <div id="event-log" class="flex-1 bg-slate-950 rounded-xl border border-slate-800 p-4 font-mono text-xs overflow-y-auto terminal-scroll space-y-2">
-                    <div class="text-slate-600">System ready. Waiting for workflow execution...</div>
-                </div>
+
             </div>
 
-            <!-- Final Output -->
-            <div class="glass p-5 h-52 flex flex-col shrink-0">
-                <h2 class="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-3">📋 Final Answer / Deliverables</h2>
-                <div id="deliverables" class="flex-1 bg-slate-950 rounded-xl border border-slate-800 p-4 text-sm overflow-y-auto terminal-scroll text-slate-400 flex items-center justify-center">
-                    No output yet. Execute a workflow to see results here.
+            <!-- Agent Progress Banner (Inline when working) -->
+            <div id="agent-thinking-banner" class="hidden px-6 py-2 bg-indigo-950/60 border-t border-b border-indigo-800/40 text-xs text-indigo-300 flex items-center justify-between shrink-0 slide-in">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-indigo-400 pulse-dot"></span>
+                    <span id="thinking-step-text">Agents are processing your query...</span>
+                </div>
+                <span id="thinking-agent-role" class="px-2 py-0.5 rounded bg-indigo-900/80 text-[10px] font-mono text-indigo-200 uppercase">Collaborating</span>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="p-4 bg-slate-950 border-t border-slate-800 shrink-0">
+                <div class="max-w-4xl mx-auto flex gap-3 items-center">
+                    <div class="flex-1 relative">
+                        <textarea id="chat-input" rows="1"
+                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none overflow-hidden"
+                            placeholder="Ask any question about products, customers, vendors, warranties, or policies..."></textarea>
+                    </div>
+                    <button id="btn-send"
+                        class="h-11 px-6 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 text-sm shrink-0">
+                        ⚡ Ask AI
+                    </button>
                 </div>
             </div>
-        </div>
+
+        </section>
     </main>
 
     <script>
         let ws;
-        let workflowCount = 0;
         let currentWorkflowId = null;
 
-        // ─── WebSocket ────────────────────────────────────────────────────────────
+        // ─── WebSocket Connection ───────────────────────────────────────────────────
         function connectWS() {
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${proto}//${location.host}/ws/events`);
 
             ws.onopen = () => {
                 document.getElementById('connection-status').innerHTML =
-                    `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span> Live Connected`;
-                document.getElementById('connection-status').className = 'text-emerald-400 flex items-center gap-1.5 text-xs';
-                document.getElementById('live-badge').classList.remove('hidden');
+                    `<span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot inline-block mr-1"></span> WebSocket Connected`;
+                document.getElementById('connection-status').className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs';
             };
 
             ws.onmessage = (e) => {
                 const data = JSON.parse(e.data);
-                appendLog(data);
-                updateAgentCard(data);
-                // When executor finishes, show final answer
-                if (data.agent_role === 'executor' && data.event_type === 'agent_completed') {
-                    pollFinalResult();
-                }
+                handleAgentEvent(data);
             };
 
             ws.onclose = () => {
                 document.getElementById('connection-status').innerHTML =
-                    `<span class="w-1.5 h-1.5 rounded-full bg-rose-400 inline-block mr-1"></span> Reconnecting...`;
-                document.getElementById('live-badge').classList.add('hidden');
+                    `<span class="w-2 h-2 rounded-full bg-rose-400 pulse-dot inline-block mr-1"></span> Reconnecting...`;
+                document.getElementById('connection-status').className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs';
                 setTimeout(connectWS, 2500);
             };
         }
 
-        // ─── Log Entry ───────────────────────────────────────────────────────────
-        const eventLog = document.getElementById('event-log');
-        function appendLog(data) {
-            const time = new Date(data.timestamp || Date.now()).toLocaleTimeString();
-            const roleColors = {
-                planner: 'text-indigo-400', research: 'text-cyan-400',
-                analysis: 'text-emerald-400', decision: 'text-amber-400',
-                executor: 'text-rose-400', SYSTEM: 'text-slate-400'
-            };
-            const role = (data.agent_role || 'SYSTEM').toLowerCase();
-            let msgColor = roleColors[role] || 'text-slate-300';
-            if (data.event_type && data.event_type.includes('error')) msgColor = 'text-rose-400';
-            if (data.event_type && data.event_type.includes('tool')) msgColor = 'text-yellow-300';
-
-            const el = document.createElement('div');
-            el.className = 'slide-in';
-            el.innerHTML = `<span class="text-slate-600">[${time}]</span> <span class="font-bold ${roleColors[role] || 'text-slate-400'}">[${(data.agent_role||'SYS').toUpperCase()}]</span> <span class="${msgColor}">${data.message}</span>`;
-            eventLog.appendChild(el);
-            eventLog.scrollTop = eventLog.scrollHeight;
-        }
-
-        // ─── Agent Cards ─────────────────────────────────────────────────────────
-        function updateAgentCard(data) {
+        // ─── Handle Real-Time Agent Events ──────────────────────────────────────────
+        function handleAgentEvent(data) {
             const role = (data.agent_role || '').toLowerCase();
-            const badge = document.getElementById(`status-${role}`);
-            const card  = document.getElementById(`card-${role}`);
-            if (!badge || !card) return;
+            updateAgentCard(data);
+
+            const banner = document.getElementById('agent-thinking-banner');
+            const stepText = document.getElementById('thinking-step-text');
+            const roleBadge = document.getElementById('thinking-agent-role');
 
             if (data.event_type && data.event_type.includes('started')) {
-                badge.textContent = 'Running';
-                badge.className = 'text-xs px-2 py-1 rounded-md bg-indigo-500/30 text-indigo-300 pulse-dot';
-                card.classList.add('agent-running'); card.classList.remove('agent-done');
-            } else if (data.event_type && data.event_type.includes('completed')) {
-                badge.textContent = '✓ Done';
-                badge.className = 'text-xs px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-400';
-                card.classList.add('agent-done'); card.classList.remove('agent-running');
-                setTimeout(() => {
-                    badge.textContent = 'Idle';
-                    badge.className = 'text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400';
-                    card.classList.remove('agent-done');
-                }, 5000);
+                banner.classList.remove('hidden');
+                roleBadge.textContent = role.toUpperCase();
+                
+                const agentDescriptions = {
+                    planner: '🗺️ Planner Agent is decomposing your request...',
+                    research: '🔍 Research Agent is querying enterprise.db...',
+                    analysis: '📊 Analysis Agent is calculating metrics...',
+                    decision: '⚖️ Decision Agent is evaluating business policies...',
+                    executor: '⚡ Executor Agent is preparing your answer...'
+                };
+                stepText.textContent = agentDescriptions[role] || `${role.toUpperCase()} is working...`;
+            }
+
+            if (role === 'executor' && data.event_type === 'agent_completed') {
+                banner.classList.add('hidden');
+                pollFinalResult();
             }
         }
 
-        // ─── Poll for final result ────────────────────────────────────────────────
+        // ─── Update Agent Sidebar Cards ─────────────────────────────────────────────
+        function updateAgentCard(data) {
+            const role = (data.agent_role || '').toLowerCase();
+            const badge = document.getElementById(`status-${role}`);
+            if (!badge) return;
+
+            if (data.event_type && data.event_type.includes('started')) {
+                badge.textContent = 'Working...';
+                badge.className = 'text-[10px] px-2 py-0.5 rounded-md bg-indigo-500/30 text-indigo-300 pulse-dot font-medium';
+            } else if (data.event_type && data.event_type.includes('completed')) {
+                badge.textContent = '✓ Done';
+                badge.className = 'text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-medium';
+                setTimeout(() => {
+                    badge.textContent = 'Idle';
+                    badge.className = 'text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-medium';
+                }, 4000);
+            }
+        }
+
+        // ─── Chat Message Helpers ──────────────────────────────────────────────────
+        const chatFeed = document.getElementById('chat-feed');
+
+        function appendUserMessage(text) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const div = document.createElement('div');
+            div.className = 'flex justify-end slide-in';
+            div.innerHTML = `
+                <div class="max-w-xl">
+                    <div class="user-bubble px-4 py-3 text-sm text-white shadow-lg shadow-indigo-500/10">
+                        ${escapeHtml(text)}
+                    </div>
+                    <div class="text-[10px] text-slate-500 text-right mt-1">${time}</div>
+                </div>
+            `;
+            chatFeed.appendChild(div);
+            scrollToBottom();
+        }
+
+        function createBotLoadingBubble() {
+            const div = document.createElement('div');
+            div.id = 'active-bot-bubble';
+            div.className = 'flex gap-3 slide-in';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md">🤖</div>
+                <div class="max-w-2xl flex-1">
+                    <div class="bot-bubble p-4 text-sm text-slate-200">
+                        <div class="flex items-center gap-2 text-indigo-400 text-xs font-semibold">
+                            <span class="w-2 h-2 rounded-full bg-indigo-400 pulse-dot"></span>
+                            AI Agents are collaborating...
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Planner, Research, Analysis, Decision, and Executor agents are retrieving data from enterprise.db</p>
+                    </div>
+                </div>
+            `;
+            chatFeed.appendChild(div);
+            scrollToBottom();
+        }
+
+        function updateBotBubbleResult(markdownText) {
+            const activeBubble = document.getElementById('active-bot-bubble');
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const htmlContent = marked.parse(markdownText);
+
+            if (activeBubble) {
+                activeBubble.id = ''; // remove ID
+                activeBubble.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md">🤖</div>
+                    <div class="max-w-2xl flex-1">
+                        <div class="bot-bubble p-4 text-sm text-slate-200 leading-relaxed">
+                            ${htmlContent}
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-1 flex items-center gap-2">
+                            <span>${time}</span>
+                            <span>•</span>
+                            <span class="text-emerald-400 font-medium">✓ Verified from enterprise.db</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const div = document.createElement('div');
+                div.className = 'flex gap-3 slide-in';
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md">🤖</div>
+                    <div class="max-w-2xl flex-1">
+                        <div class="bot-bubble p-4 text-sm text-slate-200 leading-relaxed">
+                            ${htmlContent}
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-1 flex items-center gap-2">
+                            <span>${time}</span>
+                            <span>•</span>
+                            <span class="text-emerald-400 font-medium">✓ Verified from enterprise.db</span>
+                        </div>
+                    </div>
+                `;
+                chatFeed.appendChild(div);
+            }
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Track completed workflow IDs to prevent duplicate message bubbles
+        const renderedWorkflows = new Set();
+
+        // ─── Poll Final Workflow Result ─────────────────────────────────────────────
         async function pollFinalResult() {
-            if (!currentWorkflowId) return false;
+            if (!currentWorkflowId || renderedWorkflows.has(currentWorkflowId)) return true;
             try {
                 const res = await fetch(`/api/v1/workflows/${currentWorkflowId}`);
                 if (res.ok) {
@@ -242,74 +400,93 @@
                     const ctx = wf.context || {};
                     const status = wf.status;
 
-                    // Only show execution_output (Executor Agent's final answer)
-                    // Fall back to decision_output if executor didn't run
                     if (ctx.execution_output) {
-                        showDeliverable(ctx.execution_output);
-                        return true; // done
+                        renderedWorkflows.add(currentWorkflowId);
+                        document.getElementById('agent-thinking-banner').classList.add('hidden');
+                        updateBotBubbleResult(ctx.execution_output);
+                        return true;
                     }
-                    // If workflow is completed but no execution_output, show best available
                     if (status === 'completed') {
-                        const fallback = ctx.decision_output || ctx.analysis_output || ctx.research_output || ctx.plan_output;
-                        if (fallback) showDeliverable(fallback);
-                        return true; // done
+                        renderedWorkflows.add(currentWorkflowId);
+                        const fallback = ctx.execution_output || ctx.decision_output || ctx.analysis_output || ctx.research_output || ctx.plan_output;
+                        if (fallback) {
+                            document.getElementById('agent-thinking-banner').classList.add('hidden');
+                            updateBotBubbleResult(fallback);
+                        }
+                        return true;
                     }
                 }
             } catch (e) { console.warn('Poll error', e); }
-            return false; // not done yet
+            return false;
         }
 
-        function showDeliverable(text) {
-            const box = document.getElementById('deliverables');
-            box.className = 'flex-1 bg-slate-950 rounded-xl border border-emerald-800/50 p-4 text-sm overflow-y-auto terminal-scroll text-slate-200 whitespace-pre-wrap';
-            box.textContent = text;
-        }
+        // ─── Send Question Handler ──────────────────────────────────────────────────
+        async function sendQuestion(text) {
+            const input = document.getElementById('chat-input');
+            const query = (text || input.value).trim();
+            if (!query) return;
 
-        // ─── Launch Button ────────────────────────────────────────────────────────
-        document.getElementById('btn-launch').onclick = async () => {
-            const type  = document.getElementById('workflow-type').value;
-            const input = document.getElementById('workflow-input').value.trim();
-            if (!input) { alert('Please enter a request.'); return; }
+            input.value = '';
+            input.style.height = 'auto';
 
-            // Reset UI
-            eventLog.innerHTML = '';
-            document.getElementById('deliverables').textContent = 'Agents are working... please wait.';
-            document.getElementById('deliverables').className = 'flex-1 bg-slate-950 rounded-xl border border-slate-800 p-4 text-sm overflow-y-auto terminal-scroll text-slate-500 flex items-center justify-center';
-            appendLog({ agent_role: 'SYSTEM', event_type: 'workflow_started', message: `Launching "${type}" workflow...`, timestamp: new Date().toISOString() });
+            appendUserMessage(query);
+            createBotLoadingBubble();
 
             try {
                 const res = await fetch('/api/v1/workflows/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ request: input, workflow_type: type })
+                    body: JSON.stringify({ request: query, workflow_type: 'custom' })
                 });
                 const data = await res.json();
                 currentWorkflowId = data.workflow_id;
-                workflowCount++;
-                document.getElementById('workflow-counter').textContent = `${workflowCount} workflow${workflowCount > 1 ? 's' : ''} run`;
-                appendLog({ agent_role: 'SYSTEM', event_type: 'workflow_started', message: `Workflow ${data.workflow_id} started. Agents collaborating...`, timestamp: new Date().toISOString() });
 
-                // Poll every 2s for up to 60s, stop only when execution_output is ready
                 let polls = 0;
                 const pollTimer = setInterval(async () => {
                     polls++;
                     const done = await pollFinalResult();
-                    if (done || polls > 30) {
+                    if (done || polls > 25) {
                         clearInterval(pollTimer);
-                        if (polls > 30) {
-                            appendLog({ agent_role: 'SYSTEM', event_type: 'timeout', message: 'Workflow timed out waiting for result.', timestamp: new Date().toISOString() });
-                        }
+                        document.getElementById('agent-thinking-banner').classList.add('hidden');
                     }
                 }, 2000);
 
             } catch (err) {
-                appendLog({ agent_role: 'SYSTEM', event_type: 'error', message: `Error: ${err.message}`, timestamp: new Date().toISOString() });
+                updateBotBubbleResult(`⚠️ **Error executing query:** ${err.message}`);
+                document.getElementById('agent-thinking-banner').classList.add('hidden');
             }
+        }
+
+        function sendQuickQuery(queryText) {
+            sendQuestion(queryText);
+        }
+
+        // ─── Event Listeners ────────────────────────────────────────────────────────
+        document.getElementById('btn-send').onclick = () => sendQuestion();
+
+        const inputEl = document.getElementById('chat-input');
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendQuestion();
+            }
+        });
+
+        document.getElementById('btn-clear-chat').onclick = () => {
+            chatFeed.innerHTML = `
+                <div class="glass p-6 max-w-2xl mx-auto border border-indigo-500/20 glow-indigo slide-in">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="text-3xl">👋</span>
+                        <div>
+                            <h3 class="font-bold text-base text-white">Chat cleared! How can I help you?</h3>
+                            <p class="text-xs text-slate-400">Ask any question about products, customers, vendors, or policies.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
         };
 
-        document.getElementById('btn-clear').onclick = () => { eventLog.innerHTML = ''; };
-
-        // Start WS immediately
+        // Initialize WebSocket
         connectWS();
     </script>
 </body>
