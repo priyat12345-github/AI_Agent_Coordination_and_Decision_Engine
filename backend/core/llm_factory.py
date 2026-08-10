@@ -487,8 +487,8 @@ According to enterprise policy, **VIP and Enterprise Tier customers** with activ
 
 
     async def ainvoke(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        """Async mock invocation with simulated processing delay."""
-        delay = random.uniform(0.5, 2.0)
+        """Async mock invocation with minimal processing delay for fast response times."""
+        delay = random.uniform(0.05, 0.15)
         await asyncio.sleep(delay)
         response = self._select_response(messages)
         logger.info(f"[MockLLM] Generated response ({len(response)} chars)")
@@ -518,11 +518,13 @@ class GeminiLLM(BaseLLM):
                     google_api_key=settings.GOOGLE_API_KEY,
                     temperature=settings.LLM_TEMPERATURE,
                     max_output_tokens=settings.LLM_MAX_TOKENS,
+                    max_retries=0,
                 )
                 logger.info(f"Initialized Google Gemini LLM with model: {model_name}")
                 break
             except Exception as e:
                 logger.warning(f"Could not init model {model_name}: {e}")
+
 
     async def ainvoke(self, messages: List[Dict[str, str]], **kwargs) -> str:
         if not self.client:
