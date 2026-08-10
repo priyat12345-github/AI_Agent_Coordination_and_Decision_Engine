@@ -274,7 +274,10 @@
 
             if (role === 'executor' && data.event_type === 'agent_completed') {
                 banner.classList.add('hidden');
-                pollFinalResult();
+                // Only poll via WS if polling timer hasn't already rendered the result
+                if (currentWorkflowId && !renderedWorkflows.has(currentWorkflowId)) {
+                    pollFinalResult();
+                }
             }
         }
 
@@ -442,14 +445,15 @@
                 currentWorkflowId = data.workflow_id;
 
                 let polls = 0;
-                const pollTimer = setInterval(async () => {
+                let pollTimer = setInterval(async () => {
                     polls++;
                     const done = await pollFinalResult();
                     if (done || polls > 25) {
                         clearInterval(pollTimer);
+                        pollTimer = null;
                         document.getElementById('agent-thinking-banner').classList.add('hidden');
                     }
-                }, 2000);
+                }, 1500);
 
             } catch (err) {
                 updateBotBubbleResult(`⚠️ **Error executing query:** ${err.message}`);

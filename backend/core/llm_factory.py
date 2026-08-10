@@ -6,6 +6,7 @@ Supports Mock (demo), Google Gemini, and OpenAI backends.
 import json
 import random
 import asyncio
+import re
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from datetime import datetime
