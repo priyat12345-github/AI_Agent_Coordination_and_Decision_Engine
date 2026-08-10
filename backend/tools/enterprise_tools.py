@@ -102,9 +102,12 @@ registry.register(ToolDefinition(
 # 3. DATABASE TOOL
 # ═══════════════════════════════════════════════════════
 
-def _get_db_connection():
+def _get_db_connection(path_override=None):
     """Get SQLite connection, creating DB if needed."""
-    db_path = BASE_DIR / "data" / "enterprise.db"
+    if path_override:
+        db_path = path_override
+    else:
+        db_path = BASE_DIR / "data" / "enterprise.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -112,9 +115,10 @@ def _get_db_connection():
 
 
 def _initialize_db():
-    """Create and seed comprehensive enterprise database tables."""
-    conn = _get_db_connection()
-    cursor = conn.cursor()
+    """Create and seed comprehensive enterprise database tables in both data/ and root."""
+    for target_path in [BASE_DIR / "data" / "enterprise.db", BASE_DIR / "enterprise.db"]:
+        conn = _get_db_connection(target_path)
+        cursor = conn.cursor()
 
     cursor.executescript("""
         CREATE TABLE IF NOT EXISTS vendors (
