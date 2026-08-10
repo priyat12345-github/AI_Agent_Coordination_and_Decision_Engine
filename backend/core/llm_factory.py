@@ -587,25 +587,25 @@ def create_llm() -> BaseLLM:
     based on the configured provider and available API keys.
     Falls back to Mock if provider initialization fails.
     """
-    provider = settings.LLM_PROVIDER
+    provider_str = str(settings.LLM_PROVIDER).lower()
 
-    if provider == LLMProvider.GEMINI and settings.GOOGLE_API_KEY:
+    if (provider_str in ["gemini", "google"] or settings.GOOGLE_API_KEY) and settings.GOOGLE_API_KEY and settings.GOOGLE_API_KEY != "your-google-api-key-here":
         try:
             return GeminiLLM()
         except Exception as e:
             logger.warning(f"Gemini init failed, falling back to Mock: {e}")
             return MockLLM()
 
-    elif provider == LLMProvider.OPENAI and settings.OPENAI_API_KEY:
+    elif (provider_str == "openai" or settings.OPENAI_API_KEY) and settings.OPENAI_API_KEY and settings.OPENAI_API_KEY != "your-openai-api-key-here":
         try:
             return OpenAILLM()
         except Exception as e:
             logger.warning(f"OpenAI init failed, falling back to Mock: {e}")
             return MockLLM()
 
-    else:
-        logger.info("Using Mock LLM (no API key configured)")
-        return MockLLM()
+    logger.info("Using Mock LLM (no API key configured)")
+    return MockLLM()
+
 
 
 # Global LLM instance
