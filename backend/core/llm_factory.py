@@ -502,43 +502,62 @@ According to enterprise policy, **VIP and Enterprise Tier customers** with activ
 
 
 class GeminiLLM(BaseLLM):
-    """Google Gemini LLM wrapper."""
+    """Google Gemini LLM wrapper with graceful fallback."""
 
     def __init__(self):
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            self.client = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
-                google_api_key=settings.GOOGLE_API_KEY,
-                temperature=settings.LLM_TEMPERATURE,
-                max_output_tokens=settings.LLM_MAX_TOKENS,
-            )
-            logger.info("Initialized Google Gemini LLM")
-        except Exception as e:
-            logger.error(f"Failed to initialize Gemini: {e}")
-            raise
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        self.mock_fallback = MockLLM()
+        self.client = None
+        
+        # Try preferred Gemini model names
+        model_candidates = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro"]
+        for model_name in model_candidates:
+            try:
+                self.client = ChatGoogleGenerativeAI(
+                    model=model_name,
+                    google_api_key=settings.GOOGLE_API_KEY,
+                    temperature=settings.LLM_TEMPERATURE,
+                    max_output_tokens=settings.LLM_MAX_TOKENS,
+                )
+                logger.info(f"Initialized Google Gemini LLM with model: {model_name}")
+                break
+            except Exception as e:
+                logger.warning(f"Could not init model {model_name}: {e}")
 
     async def ainvoke(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        from langchain_core.messages import HumanMessage, SystemMessage
-        lc_messages = []
-        for m in messages:
-            if m["role"] == "system":
-                lc_messages.append(SystemMessage(content=m["content"]))
-            else:
-                lc_messages.append(HumanMessage(content=m["content"]))
-        result = await self.client.ainvoke(lc_messages)
-        return result.content
+        if not self.client:
+            return await self.mock_fallback.ainvoke(messages, **kwargs)
+        try:
+            from langchain_core.messages import HumanMessage, SystemMessage
+            lc_messages = []
+            for m in messages:
+                if m["role"] == "system":
+                    lc_messages.append(SystemMessage(content=m["content"]))
+                else:
+                    lc_messages.append(HumanMessage(content=m["content"]))
+            result = await self.client.ainvoke(lc_messages)
+            return result.content
+        except Exception as e:
+            logger.warning(f"Gemini API call failed ({e}), using engine fallback response.")
+            return await self.mock_fallback.ainvoke(messages, **kwargs)
 
     def invoke(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        from langchain_core.messages import HumanMessage, SystemMessage
-        lc_messages = []
-        for m in messages:
-            if m["role"] == "system":
-                lc_messages.append(SystemMessage(content=m["content"]))
-            else:
-                lc_messages.append(HumanMessage(content=m["content"]))
-        result = self.client.invoke(lc_messages)
-        return result.content
+        if not self.client:
+            return self.mock_fallback.invoke(messages, **kwargs)
+        try:
+            from langchain_core.messages import HumanMessage, SystemMessage
+            lc_messages = []
+            for m in messages:
+                if m["role"] == "system":
+                    lc_messages.append(SystemMessage(content=m["content"]))
+                else:
+                    lc_messages.append(HumanMessage(content=m["content"]))
+            result = self.client.invoke(lc_messages)
+            return result.content
+        except Exception as e:
+            logger.warning(f"Gemini API call failed ({e}), using engine fallback response.")
+            return self.mock_fallback.invoke(messages, **kwargs)
+
 
 
 class OpenAILLM(BaseLLM):
