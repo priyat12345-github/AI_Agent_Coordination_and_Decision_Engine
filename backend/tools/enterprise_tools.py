@@ -631,3 +631,6 @@ def initialize_all_tools():
     _initialize_db()
     logger.success(f"Tool registry initialized with {len(registry)} tools")
     return registry
+
+# Auto-initialize on module import
+initialize_all_tools()

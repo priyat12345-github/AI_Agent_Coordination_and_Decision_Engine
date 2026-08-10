@@ -31,6 +31,14 @@ app.add_middleware(
 
 app.include_router(workflows.router)
 
+@app.on_event("startup")
+async def on_startup():
+    """Ensure database and tools are fully initialized on server start."""
+    from backend.tools.enterprise_tools import initialize_all_tools
+    initialize_all_tools()
+    logger.info("Application startup: Enterprise database and tools ready.")
+
+
 # Active WebSocket connections
 active_connections = set()
 
