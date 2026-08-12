@@ -36,6 +36,38 @@
 </head>
 <body class="h-screen w-full overflow-hidden flex flex-col">
 
+    <!-- Login Modal Overlay -->
+    <div id="login-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden">
+        <div class="glass p-8 w-full max-w-md shadow-2xl glow-indigo border border-indigo-500/30">
+            <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-3">
+                <span class="text-3xl">👋</span> Welcome
+            </h2>
+            <p class="text-sm text-slate-300 mb-6">Please sign in to access the Enterprise AI Assistant.</p>
+            
+            <div id="login-error" class="hidden mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium"></div>
+
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Your Name / ID</label>
+                    <input type="text" id="username" required placeholder="e.g. Priya, CloudPeak Systems, or admin" 
+                           class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98]">
+                    Sign In to Enterprise
+                </button>
+            </form>
+
+            <div class="mt-6 border-t border-slate-800 pt-4">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Available Accounts for Demo:</h3>
+                <div class="text-[11px] text-slate-400 space-y-1">
+                    <p>👥 **Customers:** `Priya`, `C001` (Global Finance Corp)</p>
+                    <p>🏭 **Vendors:** `CloudPeak Systems`, `V003`</p>
+                    <p>💼 **Employees:** `Elena Vasquez`, `admin`</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Top Header -->
     <header class="gradient-header h-16 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-10">
         <div class="flex items-center gap-3">
@@ -50,6 +82,12 @@
         </div>
 
         <div class="flex items-center gap-4 text-xs">
+            <div id="user-profile" class="hidden items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
+                <span class="text-lg">👤</span> <span id="display-username" class="font-semibold"></span>
+            </div>
+            <button id="btn-logout" class="hidden px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-500/20 hover:text-rose-400 text-slate-300 transition-all flex items-center gap-1.5 border border-slate-700">
+                Log Out
+            </button>
             <span id="connection-status" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-400">
                 <span class="w-2 h-2 rounded-full bg-yellow-400 pulse-dot"></span> Connecting...
             </span>
@@ -390,12 +428,14 @@
             return div.innerHTML;
         }
 
-        // Track completed workflow IDs to prevent duplicate message bubbles
+        // Track completed workflow IDs and atomic lock to prevent ANY duplicate bubbles
         const renderedWorkflows = new Set();
+        let isRendering = false;
 
         // ─── Poll Final Workflow Result ─────────────────────────────────────────────
         async function pollFinalResult() {
-            if (!currentWorkflowId || renderedWorkflows.has(currentWorkflowId)) return true;
+            // Double guard: both Set check AND atomic lock
+            if (!currentWorkflowId || renderedWorkflows.has(currentWorkflowId) || isRendering) return true;
             try {
                 const res = await fetch(`/api/v1/workflows/${currentWorkflowId}`);
                 if (res.ok) {
@@ -403,21 +443,18 @@
                     const ctx = wf.context || {};
                     const status = wf.status;
 
-                    if (ctx.execution_output) {
+                    const output = ctx.execution_output || (status === 'completed' && (ctx.decision_output || ctx.analysis_output || ctx.research_output || ctx.plan_output));
+                    if (output) {
+                        // Set lock and mark rendered BEFORE any await or DOM update
+                        if (renderedWorkflows.has(currentWorkflowId) || isRendering) return true;
+                        isRendering = true;
                         renderedWorkflows.add(currentWorkflowId);
                         document.getElementById('agent-thinking-banner').classList.add('hidden');
-                        updateBotBubbleResult(ctx.execution_output);
+                        updateBotBubbleResult(output);
+                        isRendering = false;
                         return true;
                     }
-                    if (status === 'completed') {
-                        renderedWorkflows.add(currentWorkflowId);
-                        const fallback = ctx.execution_output || ctx.decision_output || ctx.analysis_output || ctx.research_output || ctx.plan_output;
-                        if (fallback) {
-                            document.getElementById('agent-thinking-banner').classList.add('hidden');
-                            updateBotBubbleResult(fallback);
-                        }
-                        return true;
-                    }
+                    if (status === 'completed') return true;
                 }
             } catch (e) { console.warn('Poll error', e); }
             return false;
@@ -435,25 +472,29 @@
             appendUserMessage(query);
             createBotLoadingBubble();
 
+            const currentUser = localStorage.getItem('enterprise_user');
+            const queryWithContext = currentUser ? `${query} (User: ${currentUser})` : query;
+
             try {
                 const res = await fetch('/api/v1/workflows/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ request: query, workflow_type: 'custom' })
+                    body: JSON.stringify({ request: queryWithContext, workflow_type: 'custom' })
                 });
                 const data = await res.json();
                 currentWorkflowId = data.workflow_id;
 
+                isRendering = false; // reset lock for new query
                 let polls = 0;
                 let pollTimer = setInterval(async () => {
                     polls++;
                     const done = await pollFinalResult();
-                    if (done || polls > 25) {
+                    if (done || polls > 30) {
                         clearInterval(pollTimer);
                         pollTimer = null;
                         document.getElementById('agent-thinking-banner').classList.add('hidden');
                     }
-                }, 1500);
+                }, 1000);
 
             } catch (err) {
                 updateBotBubbleResult(`⚠️ **Error executing query:** ${err.message}`);
@@ -468,8 +509,7 @@
         // ─── Event Listeners ────────────────────────────────────────────────────────
         document.getElementById('btn-send').onclick = () => sendQuestion();
 
-        const inputEl = document.getElementById('chat-input');
-        inputEl.addEventListener('keydown', (e) => {
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendQuestion();
@@ -477,18 +517,64 @@
         });
 
         document.getElementById('btn-clear-chat').onclick = () => {
-            chatFeed.innerHTML = `
-                <div class="glass p-6 max-w-2xl mx-auto border border-indigo-500/20 glow-indigo slide-in">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="text-3xl">👋</span>
-                        <div>
-                            <h3 class="font-bold text-base text-white">Chat cleared! How can I help you?</h3>
-                            <p class="text-xs text-slate-400">Ask any question about products, customers, vendors, or policies.</p>
-                        </div>
-                    </div>
-                </div>
-            `;
+            document.getElementById('chat-feed').innerHTML = '';
         };
+
+        // ─── Login System ───────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = localStorage.getItem('enterprise_user');
+            const role = localStorage.getItem('enterprise_user_role');
+            const modal = document.getElementById('login-modal');
+            const profile = document.getElementById('user-profile');
+            const btnLogout = document.getElementById('btn-logout');
+            const displayName = document.getElementById('display-username');
+            const errorDiv = document.getElementById('login-error');
+
+            if (!user) {
+                modal.classList.remove('hidden');
+            } else {
+                profile.classList.remove('hidden');
+                profile.classList.add('flex');
+                btnLogout.classList.remove('hidden');
+                btnLogout.classList.add('flex');
+                displayName.textContent = `${user} (${role || 'User'})`;
+            }
+
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username').value.trim();
+                if (!username) return;
+
+                errorDiv.classList.add('hidden');
+                errorDiv.textContent = '';
+
+                try {
+                    const res = await fetch('/api/v1/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        localStorage.setItem('enterprise_user', data.username);
+                        localStorage.setItem('enterprise_user_role', data.role);
+                        window.location.reload();
+                    } else {
+                        errorDiv.textContent = data.message || 'Authentication failed.';
+                        errorDiv.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    errorDiv.textContent = 'Server connection error. Please try again.';
+                    errorDiv.classList.remove('hidden');
+                }
+            });
+
+            btnLogout.addEventListener('click', () => {
+                localStorage.removeItem('enterprise_user');
+                localStorage.removeItem('enterprise_user_role');
+                window.location.reload();
+            });
+        });
 
         // Initialize WebSocket
         connectWS();

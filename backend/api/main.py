@@ -31,6 +31,47 @@ app.add_middleware(
 
 app.include_router(workflows.router)
 
+from pydantic import BaseModel
+import sqlite3
+from backend.tools.enterprise_tools import _get_db_connection
+
+class LoginRequest(BaseModel):
+    username: str
+
+@app.post("/api/v1/auth/login")
+async def login(req: LoginRequest):
+    username = req.username.strip()
+    username_lower = username.lower()
+    
+    # Predefined employees
+    valid_employees = ["elena vasquez", "sarah chen", "marcus lee", "rachel torres", "david kim", "admin"]
+    if username_lower in valid_employees:
+        return {"status": "success", "role": "Employee", "username": username}
+        
+    try:
+        conn = _get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check customers
+        cursor.execute("SELECT name, id FROM customers WHERE LOWER(name) = ? OR LOWER(id) = ?", (username_lower, username_lower))
+        cust = cursor.fetchone()
+        if cust:
+            conn.close()
+            return {"status": "success", "role": "Customer", "username": cust[0], "id": cust[1]}
+            
+        # Check vendors
+        cursor.execute("SELECT name, id FROM vendors WHERE LOWER(name) = ? OR LOWER(id) = ?", (username_lower, username_lower))
+        vend = cursor.fetchone()
+        if vend:
+            conn.close()
+            return {"status": "success", "role": "Vendor", "username": vend[0], "id": vend[1]}
+            
+        conn.close()
+    except Exception as e:
+        logger.error(f"Login DB check failed: {e}")
+        
+    return {"status": "error", "message": "User not found in enterprise records."}
+
 @app.on_event("startup")
 async def on_startup():
     """Ensure database and tools are fully initialized on server start."""

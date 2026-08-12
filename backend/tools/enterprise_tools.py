@@ -116,9 +116,9 @@ def _get_db_connection(path_override=None):
 
 def _initialize_db():
     """Create and seed comprehensive enterprise database tables in both data/ and root."""
-    for target_path in [BASE_DIR / "data" / "enterprise.db", BASE_DIR / "enterprise.db"]:
-        conn = _get_db_connection(target_path)
-        cursor = conn.cursor()
+    target_path = BASE_DIR / "data" / "enterprise.db"
+    conn = _get_db_connection(target_path)
+    cursor = conn.cursor()
 
     cursor.executescript("""
         CREATE TABLE IF NOT EXISTS vendors (
@@ -179,9 +179,9 @@ def _initialize_db():
             ("C002", "RetailMax Group", "Premium", 18500, "At Risk", "Neutral", "Marcus Lee", "2024-10-28", 7, 34, "POS Terminal v2", "2023-05-10", "Active - Standard", "Review Needed"),
             ("C003", "HealthBridge Network", "Enterprise", 67200, "Active", "Positive", "Elena Vasquez", "2024-11-20", 0, 91, "Cloud Firewall Server 308", "2024-03-01", "Active - Full Coverage", "Good"),
             ("C004", "LogiChain Dynamics", "Standard", 8900, "Churning", "Negative", "David Kim", "2024-10-05", 12, 18, "Enterprise Router X-205", "2024-06-12", "Active - 2 Year Enterprise", "Escalated"),
-            ("104", "Alex Johnson", "VIP", 12000, "Active", "Positive", "Sarah Chen", "2026-07-15", 1, 88, "Laptop Pro X", "2026-07-15", "Active - Full Coverage", "Good"),
+            ("104", "Alex Johnson", "VIP", 12000, "Active", "Positive", "Sarah Chen", "2026-07-15", 1, 88, "Laptop Pro X, UltraVision 4K Monitor", "2026-07-15", "Active - Full Coverage", "Good"),
             ("205", "Sam Smith", "Standard", 1500, "Inactive", "Neutral", "Marcus Lee", "2025-01-10", 0, 45, "Wireless Mouse", "2025-01-10", "Expired", "Good"),
-            ("306", "Jordan Lee", "VIP", 28000, "Active", "Positive", "Elena Vasquez", "2026-05-20", 0, 95, "Desktop Workstation", "2026-05-20", "Active - Basic", "Good"),
+            ("306", "Jordan Lee", "VIP", 28000, "Active", "Positive", "Elena Vasquez", "2026-05-20", 0, 95, "Desktop Workstation, Enterprise Router X-205", "2026-05-20", "Active - Basic", "Good"),
         ]
         cursor.executemany("INSERT OR IGNORE INTO customers VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", customers)
         

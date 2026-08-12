@@ -296,8 +296,59 @@ This information has been verified directly from the `products` table in our ent
                     conn.row_factory = sqlite3.Row
                     cursor = conn.cursor()
 
+                    # ── Extract User Context ──────────────────────────────────────
+                    user_match = re.search(r'\(User:\s*([^)]+)\)', q, re.IGNORECASE)
+                    logged_in_user = user_match.group(1).strip() if user_match else None
+                    
+                    role = "Employee" # default
+                    user_id = None
+                    user_name = None
+                    
+                    if logged_in_user:
+                        # Clean query by removing the User tag for matching
+                        q = re.sub(r'\(User:\s*[^)]+\)', '', q, flags=re.IGNORECASE).strip()
+                        
+                        # Lookup user in DB to verify role
+                        cursor.execute("SELECT id, name FROM customers WHERE LOWER(id) = ? OR LOWER(name) = ?", (logged_in_user.lower(), logged_in_user.lower()))
+                        cust_record = cursor.fetchone()
+                        if cust_record:
+                            role = "Customer"
+                            user_id = cust_record["id"]
+                            user_name = cust_record["name"]
+                        else:
+                            cursor.execute("SELECT id, name FROM vendors WHERE LOWER(id) = ? OR LOWER(name) = ?", (logged_in_user.lower(), logged_in_user.lower()))
+                            vend_record = cursor.fetchone()
+                            if vend_record:
+                                role = "Vendor"
+                                user_id = vend_record["id"]
+                                user_name = vend_record["name"]
+                            else:
+                                # Predefined employees
+                                valid_employees = ["elena vasquez", "sarah chen", "marcus lee", "rachel torres", "david kim", "admin"]
+                                if logged_in_user.lower() in valid_employees:
+                                    role = "Employee"
+                                    user_name = logged_in_user
+                                else:
+                                    # Not found in system records
+                                    conn.close()
+                                    return f"⚠️ **Authentication Error:** User **{logged_in_user}** not found in enterprise records. Please sign in with a valid account."
+
+                    # Enforce RBAC for Customers
+                    if role == "Customer":
+                        blocked_keywords = ["all vendor", "list vendor", "show vendor", "all customer", "list customer", "show customer", "ticket", "support", "issue", "at risk", "churn"]
+                        if any(w in q.lower() for w in blocked_keywords):
+                            conn.close()
+                            return "⚠️ **Access Denied:** As a Customer, you only have permission to view your own account details, purchased products, and active warranties."
+                            
+                    # Enforce RBAC for Vendors
+                    if role == "Vendor":
+                        blocked_keywords = ["customer", "ticket", "support", "issue", "policy", "refund", "return", "all vendor", "list vendor", "show vendor"]
+                        if any(w in q.lower() for w in blocked_keywords):
+                            conn.close()
+                            return "⚠️ **Access Denied:** As a Vendor, you only have permission to view your own company profile, performance ratings, and supplier risk level."
+
                     # ── LIST ALL PRODUCTS ─────────────────────────────────────────
-                    if any(w in q for w in ["list all product", "all product", "all active product", "show all product", "show product"]):
+                    if any(w in q for w in ["list all product", "all product", "all active product", "show all product", "show product", "active product", "list the active product", "list product", "what are the product"]):
                         cursor.execute("SELECT * FROM products ORDER BY id")
                         prods = [dict(r) for r in cursor.fetchall()]
                         conn.close()
@@ -305,20 +356,22 @@ This information has been verified directly from the `products` table in our ent
                             lines = [f"| {p['id']} | **{p['name']}** | {p['category']} | ${p['price']:,} | {p['status']} | {p['warranty_details'][:60]}... |" for p in prods]
                             header = "| ID | Name | Category | Price | Status | Warranty |\n|---|---|---|---|---|---|"
                             return f"Based on records retrieved from the enterprise database:\n\n### 📦 All Products:\n\n{header}\n" + "\n".join(lines) + "\n\n*Source: Verified from SQLite `products` table.*"
-
-                    # ── PRODUCT BY CATEGORY ───────────────────────────────────────
-                    cat_match = re.search(r'(security|networking|storage|display|laptop|cloud|computing)', q)
-                    if cat_match and any(w in q for w in ["category", "product", "in the", "products in"]):
-                        cat = cat_match.group(1)
-                        cursor.execute("SELECT * FROM products WHERE LOWER(category) LIKE ?", (f"%{cat}%",))
+                    # Matches: 'network', 'networking', 'security', 'storage', etc.
+                    cat_match = re.search(r'\b(network(?:ing)?|security|storage|display|laptop|cloud|computing)\b', q)
+                    if cat_match:
+                        cat = cat_match.group(1).rstrip('ing') if cat_match.group(1).endswith('ing') and cat_match.group(1) != 'networking' else cat_match.group(1)
+                        # 'network' -> search for 'networking' in DB too
+                        search_term = "network" if "network" in cat_match.group(1) else cat
+                        cursor.execute("SELECT * FROM products WHERE LOWER(category) LIKE ?", (f"%{search_term}%",))
                         prods = [dict(r) for r in cursor.fetchall()]
                         conn.close()
                         if prods:
                             lines = [f"- **{p['name']}** (ID: {p['id']}) | Price: ${p['price']:,} | Warranty: {p['warranty_details']}" for p in prods]
-                            return f"Based on records retrieved from the enterprise database:\n\n### 📦 Products in {cat.title()} Category:\n" + "\n".join(lines) + "\n\n*Source: Verified from SQLite `products` table.*"
+                            display_cat = cat_match.group(1).title()
+                            return f"Based on records retrieved from the enterprise database:\n\n### 📦 Products in {display_cat} Category:\n" + "\n".join(lines) + "\n\n*Source: Verified from SQLite `products` table.*"
                         else:
                             conn.close()
-                            return f"No products found in the **{cat.title()}** category."
+                            return f"No products found in the **{cat_match.group(1).title()}** category."
 
                     # ── PRODUCT BY ID ─────────────────────────────────────────────
                     prod_id = re.search(r'\b(205|308|104|501|602|703)\b', q)
@@ -341,10 +394,75 @@ This information has been verified directly from the `products` table in our ent
 
 *Source: Verified from SQLite `products` table.*"""
 
-                    # ── CUSTOMER BY ID ────────────────────────────────────────────
-                    cust_id = re.search(r'\b(c001|c002|c003|c004)\b', q)
-                    if cust_id:
-                        cursor.execute("SELECT * FROM customers WHERE LOWER(id) = ?", (cust_id.group(1),))
+                    # ── CUSTOMER PURCHASES ────────────────────────────────────────
+                    if any(w in q for w in ["bought by", "brought by", "purchased by", "products of"]):
+                        cursor.execute("SELECT * FROM customers")
+                        custs = [dict(r) for r in cursor.fetchall()]
+                        conn.close()
+                        
+                        # See if a specific customer is mentioned
+                        matched = [c for c in custs if c['id'].lower() in q.lower() or c['name'].lower() in q.lower()]
+                        
+                        if role == "Customer":
+                            # Check if they are trying to look up someone else
+                            other_custs = [c for c in custs if c['id'].lower() != user_id.lower()]
+                            if any(c['id'].lower() in q.lower() or c['name'].lower() in q.lower() for c in other_custs):
+                                return "⚠️ **Access Denied:** You cannot view other customers' purchases."
+                            matched = [c for c in custs if c['id'].lower() == user_id.lower()]
+                        elif role == "Vendor":
+                            return "⚠️ **Access Denied:** As a Vendor, you do not have permission to view customer purchases."
+                            
+                        if not matched:
+                            matched = custs # List all if no specific customer is mentioned
+                            
+                        if matched:
+                            lines = []
+                            for c in matched:
+                                purchases_raw = c.get('recent_purchase', 'None')
+                                if ',' in purchases_raw:
+                                    items = [item.strip() for item in purchases_raw.split(',')]
+                                    items_md = "\n".join([f"  - {item}" for item in items])
+                                    lines.append(f"- **{c['name']}** ({c['id']}) purchased the following items on {c.get('purchase_date', 'N/A')} | Warranty: {c.get('warranty_status', 'N/A')}:\n{items_md}")
+                                else:
+                                    lines.append(f"- **{c['name']}** ({c['id']}) purchased **{purchases_raw}** on {c.get('purchase_date', 'N/A')} | Warranty: {c.get('warranty_status', 'N/A')}")
+                            return "Based on records retrieved from the enterprise database:\n\n### 🛒 Recent Customer Purchases:\n" + "\n".join(lines) + "\n\n*Source: Verified from SQLite `customers` table.*"
+
+                    # ── CUSTOMER WARRANTY STATUS ───────────────────────────────
+                    if any(w in q.lower() for w in ["warranty status", "my warranty", "warranty active", "is my warranty"]):
+                        if role == "Customer" and user_id:
+                            cursor.execute("SELECT * FROM customers WHERE LOWER(id) = ?", (user_id.lower(),))
+                            c = cursor.fetchone()
+                            conn.close()
+                            if c:
+                                c = dict(c)
+                                icon = "✅" if "Active" in c.get("warranty_status", "") else "❌"
+                                return f"""Based on records retrieved from the enterprise database:
+
+### 🛡️ Warranty Status: {c['name']} ({c['id']})
+- **Product(s):** {c.get('recent_purchase', 'N/A')}
+- **Purchase Date:** {c.get('purchase_date', 'N/A')}
+- **Warranty Status:** {icon} {c.get('warranty_status', 'N/A')}
+- **Account Standing:** {c.get('account_standing', 'N/A')}
+
+*Source: Verified from SQLite `customers` table.*"""
+
+                    # ── CUSTOMER PROFILE / DETAILS ────────────────────────────────
+                    # Matches IDs (C001, 104, 404) or specific names
+                    cust_id = re.search(r'\b(c00[1-9]|[1-9][0-9]{2}|priya|alex|jordan)\b', q.lower())
+                    if cust_id and any(w in q.lower() for w in ["profile", "who is", "customer", "account", "details"]):
+                        match_term = cust_id.group(1)
+                        if role == "Customer":
+                            if match_term.lower() != user_id.lower() and match_term.lower() != user_name.lower():
+                                conn.close()
+                                return "⚠️ **Access Denied:** You cannot view other customers' records."
+                        elif role == "Vendor":
+                            conn.close()
+                            return "⚠️ **Access Denied:** As a Vendor, you do not have permission to view customer profiles."
+                            
+                        if match_term.isdigit() or match_term.startswith('c'):
+                            cursor.execute("SELECT * FROM customers WHERE LOWER(id) = ?", (match_term,))
+                        else:
+                            cursor.execute("SELECT * FROM customers WHERE LOWER(name) LIKE ?", (f"%{match_term}%",))
                         c = cursor.fetchone()
                         conn.close()
                         if c:
@@ -360,8 +478,8 @@ This information has been verified directly from the `products` table in our ent
 
 *Source: Verified from SQLite `customers` table.*"""
 
-                    # ── AT RISK / CHURNING CUSTOMERS ──────────────────────────────
-                    if any(w in q for w in ["at risk", "churn", "risk or churn", "risk customer", "churn customer"]):
+                    # ── AT RISK / CHURNING CUSTOMERS ────────────────────────────────────
+                    if any(w in q for w in ["at risk", "churn", "risk or churn", "risk customer", "churn customer", "high risk customer"]):
                         cursor.execute("SELECT * FROM customers WHERE status IN ('At Risk', 'Churning') ORDER BY status")
                         custs = [dict(r) for r in cursor.fetchall()]
                         conn.close()
@@ -389,6 +507,42 @@ This information has been verified directly from the `products` table in our ent
                             lines = [f"- **{v['name']}** ({v['id']}) | Industry: {v['industry']} | Revenue: ${v['revenue']:,} | Rating: {v['score']}/10" for v in vens]
                             return f"Based on records retrieved from the enterprise database:\n\n### 🏭 {risk} Risk Vendors:\n" + "\n".join(lines) + "\n\n*Source: Verified from SQLite `vendors` table.*"
 
+                    # ── VENDOR PROFILE / DETAILS ──────────────────────────────────
+                    vendor_name_match = re.search(r'\b(technova|datastream|cloudpeak|dynamics|cybershield|v00[1-5])\b', q.lower())
+                    if vendor_name_match or (role == "Vendor" and any(w in q.lower() for w in ["profile", "score", "rating", "risk", "details", "contact", "company", "who am i", "my info"])):
+                        cursor.execute("SELECT * FROM vendors")
+                        vens = [dict(r) for r in cursor.fetchall()]
+                        
+                        matched_v = []
+                        if role == "Vendor":
+                            # Check if they are trying to look up someone else
+                            other_vens = [v for v in vens if v['id'].lower() != user_id.lower()]
+                            if any(v['id'].lower() in q.lower() or v['name'].lower() in q.lower() for v in other_vens):
+                                conn.close()
+                                return "⚠️ **Access Denied:** You cannot view other vendors' records."
+                            matched_v = [v for v in vens if v['id'].lower() == user_id.lower()]
+                        else:
+                            if vendor_name_match:
+                                term = vendor_name_match.group(1)
+                                matched_v = [v for v in vens if term in v['id'].lower() or term in v['name'].lower()]
+                                
+                        if matched_v:
+                            v = matched_v[0]
+                            conn.close()
+                            return f"""Based on records retrieved from the enterprise database:
+
+### 🏭 Vendor Profile: {v['name']} ({v['id']})
+- **Industry:** {v['industry']}
+- **Annual Revenue:** ${v['revenue']:,}
+- **Employee Count:** {v['employees']}
+- **Performance Rating:** {v['score']}/10
+- **Supplier Risk Level:** {v['risk_level']}
+- **Primary Contact:** {v['contact']}
+- **Country:** {v['country']}
+- **Established Year:** {v['established']}
+
+*Source: Verified from SQLite `vendors` table.*"""
+
                     # ── ALL VENDORS ────────────────────────────────────────────────
                     if any(w in q for w in ["all vendor", "list vendor", "show vendor", "vendor"]):
                         cursor.execute("SELECT * FROM vendors ORDER BY score DESC")
@@ -408,31 +562,61 @@ This information has been verified directly from the `products` table in our ent
                             lines = [f"- **{t['id']}** — Customer: {t['customer_name']} | Issue: *{t['issue']}* | Priority: {priority_icon.get(t['priority'],'⚪')} {t['priority']} | Status: {t['status']}" for t in tickets]
                             return "Based on enterprise database records:\n\n### 🎫 Support Tickets:\n" + "\n".join(lines) + "\n\n*Source: Verified from SQLite `support_tickets` table.*"
 
-                    # ── POLICIES & REFUND / RETURN ELIGIBILITY ───────────────────
-                    if any(w in q for w in ["policy", "refund", "return", "eligible", "eligibility", "warranty refund"]):
-                        return """Based on records retrieved from the enterprise database:
+                    # ── ALL POLICIES (list / show / what are policies) ───────────
+                    if any(w in q for w in ["all polic", "list polic", "show polic", "about polic", "what polic", "polic overview", "enterprise polic"]):
+                        cursor.execute("SELECT * FROM policies ORDER BY policy_name")
+                        pols = [dict(r) for r in cursor.fetchall()]
+                        conn.close()
+                        if pols:
+                            lines = []
+                            for p in pols:
+                                tier = p.get('tier_required', 'All')
+                                action = p.get('action', p.get('description', 'See policy for details'))
+                                rule = p.get('rule', '')
+                                lines.append(f"- **{p['policy_name']}** — Tier: *{tier}* | Action: {action}" + (f" | Rule: _{rule}_" if rule else ""))
+                            return "Based on records retrieved from the enterprise database:\n\n### 📜 Enterprise Policies:\n" + "\n".join(lines) + "\n\n*Source: Verified from SQLite `policies` table.*"
 
-### 📜 Warranty Refund & Return Policy Eligibility
-
-#### 🚨 **Fully Eligible Accounts (100% Refund / Free Hardware Replacement):**
-According to enterprise policy, **VIP and Enterprise Tier customers** with active standing are eligible for **immediate, no-questions-asked hardware replacements or full refunds including shipping**:
-
-1. **Global Finance Corp (C001)** — Enterprise Tier | Status: **Active** | Manager: Rachel Torres
-2. **HealthBridge Network (C003)** — Enterprise Tier | Status: **Active** | Manager: Elena Vasquez
-3. **Alex Johnson (104)** — VIP Tier | Status: **Active** | Manager: Sarah Chen
-
----
-
-#### ⚠️ **Conditional / Trade-in Credit Accounts:**
-- **RetailMax Group (C002)** — Premium Tier | Status: *At Risk* (Requires Executive Manager review before refund approval)
-- **LogiChain Dynamics (C004)** — Standard Tier | Status: *Churning* (Eligible for 15% trade-in credit under standard terms)
-
----
-
-#### 📋 **Summary Policy Rule:**
-> *"VIP & Enterprise tier customers with active status are eligible for immediate, full refunds or 24-hour hardware replacements. Standard customers receive a 15% trade-in credit."*
-
-*Source: Verified from SQLite `policies` and `customers` tables.*"""
+                    # -- POLICIES & REFUND / RETURN ELIGIBILITY
+                    if any(w in q for w in ["policy", "refund", "return", "eligible", "eligibility", "warranty refund", "am i eligible"]):
+                        if role == "Customer" and user_id:
+                            cursor.execute("SELECT * FROM customers WHERE LOWER(id) = ?", (user_id.lower(),))
+                            c = cursor.fetchone()
+                            conn.close()
+                            if c:
+                                c = dict(c)
+                                tier = c.get("tier", "")
+                                status = c.get("status", "")
+                                if tier in ["Enterprise", "VIP"] and status == "Active":
+                                    verdict = f"\u2705 **Yes! {c['name']} is fully eligible** for an immediate full refund or hardware replacement."
+                                elif status == "At Risk":
+                                    verdict = "\u26a0\ufe0f **Conditional.** Your account is *At Risk* - refunds require Executive Manager review."
+                                elif status == "Churning":
+                                    verdict = f"\u274c **Limited.** As a {tier} tier *{status}* customer, you qualify for a **15% trade-in credit** only."
+                                else:
+                                    verdict = f"\u26a0\ufe0f **Review Required.** Contact your Account Manager **{c.get('account_manager', 'N/A')}**."
+                                return (
+                                    "Based on records retrieved from the enterprise database:\n\n"
+                                    f"### Refund Eligibility: {c['name']} ({c['id']})\n"
+                                    f"- **Tier:** {tier}\n"
+                                    f"- **Account Status:** {status}\n"
+                                    f"- **Account Manager:** {c.get('account_manager', 'N/A')}\n\n"
+                                    f"{verdict}\n\n"
+                                    "*Source: Verified from SQLite `customers` and `policies` tables.*"
+                                )
+                        else:
+                            conn.close()
+                            return (
+                                "Based on records retrieved from the enterprise database:\n\n"
+                                "### Warranty Refund & Return Policy\n\n"
+                                "**Fully Eligible (100% Refund):**\n"
+                                "1. Global Finance Corp (C001) - Enterprise | Active\n"
+                                "2. HealthBridge Network (C003) - Enterprise | Active\n"
+                                "3. Alex Johnson (104) - VIP | Active\n\n"
+                                "**Conditional Accounts:**\n"
+                                "- RetailMax Group (C002) - At Risk (Executive review required)\n"
+                                "- LogiChain Dynamics (C004) - Churning (15% trade-in credit)\n\n"
+                                "*Source: Verified from SQLite `policies` and `customers` tables.*"
+                            )
 
 
                     # ── MATH / CALCULATOR ─────────────────────────────────────────
